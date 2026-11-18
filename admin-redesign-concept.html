@@ -1,0 +1,1575 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ELON-ULTRA — Admin Console</title>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    /* ─── RESET & TOKENS ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --sidebar-w: 220px;
+      --header-h: 56px;
+      --radius: 8px;
+      --radius-sm: 5px;
+      --transition: 0.18s ease;
+    }
+
+    [data-theme="dark"] {
+      --bg:          #0d0f14;
+      --bg-2:        #12151c;
+      --bg-3:        #181c27;
+      --border:      rgba(255,255,255,0.07);
+      --border-2:    rgba(255,255,255,0.12);
+      --text:        #e8eaf0;
+      --text-2:      #8b92a5;
+      --text-3:      #555e72;
+      --accent:      #3b82f6;
+      --accent-glow: rgba(59,130,246,0.25);
+      --success:     #22c55e;
+      --danger:      #ef4444;
+      --warn:        #f59e0b;
+      --sidebar-bg:  #0a0c11;
+      --card-bg:     #12151c;
+      --tag-bg:      rgba(59,130,246,0.12);
+    }
+
+    [data-theme="light"] {
+      --bg:          #f5f7fa;
+      --bg-2:        #ffffff;
+      --bg-3:        #eef1f6;
+      --border:      #e2e6ef;
+      --border-2:    #c9d0de;
+      --text:        #1a1f2e;
+      --text-2:      #5a6380;
+      --text-3:      #9aa3b8;
+      --accent:      #2563eb;
+      --accent-glow: rgba(37,99,235,0.15);
+      --success:     #16a34a;
+      --danger:      #dc2626;
+      --warn:        #d97706;
+      --sidebar-bg:  #0f1624;
+      --card-bg:     #ffffff;
+      --tag-bg:      rgba(37,99,235,0.08);
+    }
+
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; overflow-x: hidden; }
+
+    /* ─── LAYOUT ─────────────────────────────────────────────── */
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ─── SIDEBAR ────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      border-right: 1px solid rgba(255,255,255,0.05);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+      z-index: 50;
+    }
+
+    .sidebar-logo {
+      height: var(--header-h);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      flex-shrink: 0;
+    }
+    .sidebar-logo-icon {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: #fff;
+      flex-shrink: 0;
+    }
+    .sidebar-logo-text { font-weight: 700; font-size: 13px; color: #fff; line-height: 1.2; }
+    .sidebar-logo-sub  { font-size: 10px; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 1px; }
+
+    .sidebar-section { padding: 18px 10px 6px; }
+    .sidebar-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(255,255,255,0.25); padding: 0 8px; margin-bottom: 4px; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border-radius: var(--radius-sm);
+      cursor: pointer; color: rgba(255,255,255,0.45);
+      font-size: 13px; font-weight: 500;
+      transition: background var(--transition), color var(--transition);
+      user-select: none;
+    }
+    .nav-item:hover    { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.75); }
+    .nav-item.active   { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .nav-item .icon    { width: 16px; text-align: center; font-size: 15px; flex-shrink: 0; }
+    .nav-badge {
+      margin-left: auto;
+      background: var(--danger);
+      color: #fff; font-size: 10px; font-weight: 700;
+      border-radius: 20px; padding: 1px 6px;
+      line-height: 16px;
+    }
+    .nav-badge.success { background: var(--success); }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 12px 10px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    /* ─── MAIN AREA ──────────────────────────────────────────── */
+    .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+    /* ─── TOPBAR ─────────────────────────────────────────────── */
+    .topbar {
+      height: var(--header-h);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 16px;
+      background: var(--bg-2);
+      flex-shrink: 0;
+      overflow: visible;
+      min-width: 0;
+    }
+    .topbar-title { font-weight: 700; font-size: 15px; flex: 1; }
+    .topbar-sub    { font-size: 12px; color: var(--text-2); }
+    .topbar-key-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; }
+    .topbar-key-btn {
+      width: 30px; height: 30px; border-radius: 6px;
+      border: none; background: transparent;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--text-3);
+      transition: color .15s, background .15s;
+    }
+    .topbar-key-btn:hover { color: var(--text); background: var(--bg-3); }
+    .topbar-key-btn svg { width: 15px; height: 15px; }
+    .topbar-key-btn .topbar-key-dot {
+      position: absolute; top: 5px; right: 5px;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: transparent; transition: background .2s;
+      pointer-events: none;
+    }
+    .topbar-key-btn .topbar-key-dot.active { background: var(--success); }
+    .topbar-key-popup {
+      display: none;
+      position: fixed;
+      background: var(--bg-2); border: 1px solid var(--border-2);
+      border-radius: 8px; padding: 10px 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      z-index: 9999; min-width: 210px;
+      flex-direction: column; gap: 8px;
+    }
+    .topbar-key-popup.open { display: flex; }
+    .topbar-key-popup label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; }
+    .topbar-key-popup input {
+      border: 1px solid var(--border-2); border-radius: 6px;
+      background: var(--bg-3); color: var(--text);
+      outline: none; padding: 6px 10px; font-size: 13px;
+      font-family: monospace; width: 100%; box-sizing: border-box;
+      letter-spacing: .05em;
+    }
+    .topbar-key-popup input:focus { border-color: var(--accent); }
+    .topbar-key-popup .key-save {
+      font-size: 11px; color: var(--text-3); text-align: right; cursor: default;
+    }
+
+    /* ─── SCROLLABLE CONTENT ─────────────────────────────────── */
+    .content { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 24px; }
+
+    /* ─── PAGES ──────────────────────────────────────────────── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ─── CARDS ──────────────────────────────────────────────── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+    .card-sm { padding: 14px; }
+
+    /* ─── STAT CARDS (matches dash-stat-card) ────────────────── */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .stat-card {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 10px;
+      position: relative; overflow: hidden;
+      transition: border-color var(--transition), transform var(--transition);
+    }
+    .stat-card:hover { border-color: rgba(59,130,246,0.35); transform: translateY(-2px); }
+    .stat-card::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-card.c-green::after { background: linear-gradient(90deg, var(--success), transparent); }
+    .stat-card.c-red::after   { background: linear-gradient(90deg, var(--danger),  transparent); }
+    .stat-card.c-gold::after  { background: linear-gradient(90deg, #f5a623,         transparent); }
+    .stat-card.c-blue::after  { background: linear-gradient(90deg, var(--accent),   transparent); }
+    .stat-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .stat-icon {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .stat-card.c-green .stat-icon { background: rgba(16,185,129,0.12);  color: var(--success); }
+    .stat-card.c-red   .stat-icon { background: rgba(239,68,68,0.12);   color: var(--danger); }
+    .stat-card.c-gold  .stat-icon { background: rgba(245,166,35,0.12);  color: #f5a623; }
+    .stat-card.c-blue  .stat-icon { background: rgba(59,130,246,0.12);  color: var(--accent); }
+    .stat-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+    .badge-up  { background: rgba(16,185,129,0.15); color: var(--success); }
+    .badge-dn  { background: rgba(239,68,68,0.15);  color: var(--danger); }
+    .badge-neu { background: var(--bg-3); color: var(--text-2); }
+    .stat-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--text-2); }
+    .stat-val {
+      font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height: 1;
+      font-family: 'SFMono-Regular', 'Consolas', monospace;
+      font-variant-numeric: tabular-nums; color: var(--text);
+      cursor: pointer; border-radius: 4px; padding: 2px 4px; margin: -2px -4px;
+      transition: background var(--transition);
+    }
+    .stat-val:hover { background: var(--bg-3); }
+    .stat-val[contenteditable="true"] { outline: 2px solid var(--accent); background: var(--bg-3); cursor: text; }
+    .stat-sub { font-size: 11.5px; color: var(--text-2); font-weight: 500; }
+    .stat-edit-hint { font-size: 10px; color: var(--text-3); margin-top: -4px; display: none; }
+    .stat-card:hover .stat-edit-hint { display: block; }
+    @media (max-width: 900px) { .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; } .stat-val { font-size: 20px; } }
+
+    /* ─── SECTION HEADER ─────────────────────────────────────── */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .section-title  { font-size: 15px; font-weight: 700; }
+    .section-sub    { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+    /* ─── BUTTONS ────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition);
+      border: none; line-height: 1;
+    }
+    .btn:hover   { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active  { transform: translateY(0); opacity: 1; }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost   { background: transparent; border: 1px solid var(--border-2); color: var(--text-2); }
+    .btn-ghost:hover { color: var(--text); border-color: var(--border-2); }
+    .btn-danger  { background: rgba(239,68,68,0.12); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+    .btn-success { background: rgba(34,197,94,0.12); color: var(--success); border: 1px solid rgba(34,197,94,0.2); }
+    .btn-warn    { background: rgba(245,158,11,0.12); color: var(--warn); border: 1px solid rgba(245,158,11,0.2); }
+    .btn-xs { padding: 4px 10px; font-size: 11px; }
+
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* ─── FORMS ──────────────────────────────────────────────── */
+    label span { display: block; font-size: 11px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; }
+    input[type="text"], input[type="number"], input[type="email"],
+    input[type="password"], input[type="url"], textarea, select {
+      width: 100%; background: var(--bg-3); border: 1px solid var(--border-2);
+      color: var(--text); border-radius: var(--radius-sm);
+      padding: 8px 10px; font-size: 13px; font-family: inherit;
+      transition: border-color var(--transition);
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+    input::placeholder, textarea::placeholder { color: var(--text-3); }
+    textarea { min-height: 80px; resize: vertical; }
+    .form-grid   { display: grid; gap: 12px; }
+    .form-2      { grid-template-columns: 1fr 1fr; }
+    .form-3      { grid-template-columns: 1fr 1fr 1fr; }
+
+    /* ─── TABLES ─────────────────────────────────────────────── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: var(--radius); border: 1px solid var(--border); max-width: 100%; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
+    thead th {
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px;
+      color: var(--text-2); border-bottom: 1px solid var(--border);
+      background: var(--bg-3); white-space: nowrap;
+    }
+    tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: var(--bg-3); }
+    .empty-row td { text-align: center; color: var(--text-3); padding: 28px; }
+
+    /* ─── TABS ───────────────────────────────────────────────── */
+    .tab-bar { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+    .tab-btn {
+      padding: 9px 16px; font-size: 13px; font-weight: 600;
+      color: var(--text-2); cursor: pointer; background: none; border: none;
+      border-bottom: 2px solid transparent; transition: color var(--transition), border-color var(--transition);
+      margin-bottom: -1px;
+    }
+    .tab-btn:hover  { color: var(--text); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* ─── BADGES & PILLS ─────────────────────────────────────── */
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .badge-green  { background: rgba(34,197,94,0.12);  color: var(--success); }
+    .badge-red    { background: rgba(239,68,68,0.12);  color: var(--danger); }
+    .badge-yellow { background: rgba(245,158,11,0.12); color: var(--warn); }
+    .badge-blue   { background: rgba(59,130,246,0.12); color: #60a5fa; }
+    .badge-gray   { background: var(--bg-3); color: var(--text-2); }
+
+    /* ─── ANNOUNCEMENT TICKER ────────────────────────────────── */
+    .ticker {
+      background: var(--bg-3); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 36px;
+      display: flex; align-items: center; overflow: hidden;
+    }
+    .ticker-inner {
+      display: flex; gap: 48px;
+      animation: ticker-scroll 40s linear infinite;
+      width: max-content; white-space: nowrap;
+    }
+    .ticker-item { font-size: 12px; color: var(--text-2); }
+    .ticker-item strong { color: var(--warn); }
+    @keyframes ticker-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+    /* ─── MODAL ──────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg-2); border: 1px solid var(--border-2);
+      border-radius: 12px; width: 100%; max-width: 540px;
+      max-height: 85vh; display: flex; flex-direction: column;
+      animation: modal-in 0.2s ease-out;
+    }
+    @keyframes modal-in { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-header {
+      padding: 18px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-header h3 { font-size: 15px; font-weight: 700; }
+    .modal-close { background: none; border: none; color: var(--text-2); font-size: 22px; cursor: pointer; line-height: 1; }
+    .modal-body { overflow-y: auto; padding: 20px; flex: 1; }
+    .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ─── USER CARD (modal list) ─────────────────────────────── */
+    .user-card {
+      padding: 12px 14px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      margin-bottom: 8px;
+    }
+    .user-card:hover { border-color: var(--accent); background: var(--accent-glow); }
+    .user-card-name    { font-weight: 600; font-size: 14px; }
+    .user-card-email   { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+    .user-card-balance { font-size: 12px; color: var(--success); margin-top: 4px; font-weight: 600; }
+    .user-card-meta    { display: flex; gap: 8px; margin-top: 6px; }
+
+    /* ─── TESTIMONY CARD ─────────────────────────────────────── */
+    .testimony-card {
+      background: var(--bg-3); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .testimony-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .testimony-card-name   { font-weight: 700; font-size: 13px; }
+    .testimony-card-title  { font-size: 11px; color: var(--text-2); }
+    .testimony-card-text   { font-size: 12px; color: var(--text-2); font-style: italic; line-height: 1.5; }
+    .testimony-card-stars  { font-size: 13px; color: var(--warn); }
+
+    /* ─── INLINE STATUS ──────────────────────────────────────── */
+    .status-dot {
+      display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+      margin-right: 5px; vertical-align: middle;
+    }
+    .dot-green  { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .dot-red    { background: var(--danger); }
+    .dot-yellow { background: var(--warn); }
+
+    /* ─── DIVIDER ────────────────────────────────────────────── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+
+    /* ─── THEME TOGGLE ───────────────────────────────────────── */
+    .theme-toggle {
+      background: var(--bg-3); border: 1px solid var(--border-2);
+      color: var(--text-2); border-radius: 20px;
+      padding: 5px 12px; font-size: 12px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+    }
+
+    /* ─── KEY FIELD ──────────────────────────────────────────── */
+    .key-row { display: flex; gap: 8px; }
+    .key-row input { flex: 1; }
+
+    /* ─── GROWTH STATS ───────────────────────────────────────── */
+    .growth-stats {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px; margin-bottom: 16px;
+    }
+    .growth-stat { background: var(--bg-3); border-radius: var(--radius-sm); padding: 12px; }
+    .growth-stat-label { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+    .growth-stat-value { font-size: 17px; font-weight: 700; }
+
+    /* ─── OTP TABLE STYLE ────────────────────────────────────── */
+    .otp-code {
+      font-family: 'Courier New', monospace;
+      font-size: 16px; font-weight: 800; letter-spacing: 4px;
+      color: var(--accent); padding: 3px 8px;
+      background: var(--accent-glow); border-radius: 4px;
+    }
+
+    /* ─── SCROLLBAR ──────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 10px; }
+
+    /* ─── MOBILE OVERLAY ─────────────────────────────────────── */
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 49; }
+    
+    @media (max-width: 900px) {
+      :root { --sidebar-w: 220px; }
+      .sidebar { position: fixed; left: -240px; top: 0; bottom: 0; transition: left 0.25s ease; z-index: 60; }
+      .sidebar.open { left: 0; }
+      .sidebar-overlay.open { display: block; }
+      .topbar-hamburger { display: flex !important; }
+      .form-2 { grid-template-columns: 1fr; }
+      .form-3 { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 520px) {
+      .form-3 { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .stat-card { padding: 12px 14px; }
+      .stat-val { font-size: 18px; }
+      .content { padding: 12px; }
+      .topbar { padding: 0 12px; gap: 6px; }
+      .user-pill { display: none; }
+      .section-header { flex-wrap: wrap; gap: 8px; }
+      .btn-group { flex-wrap: wrap; }
+      .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+      .tab-btn { white-space: nowrap; flex-shrink: 0; }
+      .growth-stats { grid-template-columns: 1fr 1fr; }
+      .addr-grid { grid-template-columns: 1fr; }
+      .modal { max-width: 100% !important; margin: 0; border-radius: 12px 12px 0 0; }
+      .modal-overlay { align-items: flex-end; padding: 0; }
+    }
+    .topbar-hamburger {
+      display: none; background: none; border: none;
+      color: var(--text-2); font-size: 20px; cursor: pointer; align-items: center;
+    }
+
+    /* ─── SECTION GAP ─────────────────────────────────────────── */
+    .stack { display: flex; flex-direction: column; gap: 18px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    @media (max-width: 600px)  { .row-2, .row-3 { grid-template-columns: 1fr; } }
+    @media (max-width: 400px)   { .stat-grid { grid-template-columns: 1fr 1fr; } }
+
+    /* ─── INLINE USER SELECTOR ────────────────────────────────── */
+    .user-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--bg-3); border: 1px solid var(--border-2);
+      border-radius: 20px; padding: 5px 10px; font-size: 12px;
+      color: var(--text-2); min-width: 0; overflow: hidden;
+    }
+    .user-pill strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 90px; }
+    .user-pill strong { color: var(--accent); }
+    .user-pill-change { font-size: 11px; color: var(--text-3); cursor: pointer; }
+    .user-pill-change:hover { color: var(--accent); }
+
+    /* ─── PROMPT ITEM ─────────────────────────────────────────── */
+    .prompt-item {
+      background: var(--bg-3); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    }
+    .prompt-text  { font-size: 13px; flex: 1; line-height: 1.5; }
+    .prompt-meta  { font-size: 11px; color: var(--text-2); margin-top: 4px; }
+
+    /* ─── DANGER ZONE ────────────────────────────────────────── */
+    .danger-card {
+      border: 1px solid rgba(239,68,68,0.25);
+      background: rgba(239,68,68,0.04);
+      border-radius: var(--radius); padding: 18px;
+    }
+    .danger-title { color: var(--danger); font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .danger-desc  { font-size: 12px; color: var(--text-2); margin-bottom: 12px; }
+
+    /* ─── ADDR GRID ──────────────────────────────────────────── */
+    .addr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+
+    /* Prevent any child from blowing out the layout */
+    .card, .stat-card, .danger-card { max-width: 100%; overflow: hidden; }
+    img, svg { max-width: 100%; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════════════ -->
+
+<!-- Users Modal -->
+<div class="modal-overlay" id="modal-users">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>Select User</h3>
+      <button class="modal-close" onclick="closeModal('modal-users')">&times;</button>
+    </div>
+    <div class="modal-body" id="users-list-body">
+      <div style="text-align:center;color:var(--text-3);padding:32px 0">
+        Enter admin key &amp; click "Load Users" first.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Total Value Modal -->
+<div class="modal-overlay" id="modal-edit-value">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header">
+      <h3>Edit Portfolio Value</h3>
+      <button class="modal-close" onclick="closeModal('modal-edit-value')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <label><span>New Total Value (USD)</span><input type="number" step="0.01" placeholder="0.00" id="edit-total-input" /></label>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-value')">Cancel</button>
+      <button class="btn btn-primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Testimony Modal -->
+<div class="modal-overlay" id="modal-testimony">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <h3 id="testimony-modal-title">Add Testimony</h3>
+      <button class="modal-close" onclick="closeModal('modal-testimony')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="stack">
+        <div class="form-grid form-2">
+          <label><span>Client Name *</span><input id="t-name" placeholder="John Doe" /></label>
+          <label><span>Title / Position</span><input id="t-title" placeholder="CEO, Tech Co." /></label>
+        </div>
+        <div class="form-grid form-2">
+          <label><span>Image URL</span><input id="t-image" type="url" placeholder="https://..." /></label>
+          <label><span>Rating</span>
+            <select id="t-rating">
+              <option value="5">5 ★★★★★</option>
+              <option value="4">4 ★★★★☆</option>
+              <option value="3">3 ★★★☆☆</option>
+              <option value="2">2 ★★☆☆☆</option>
+              <option value="1">1 ★☆☆☆☆</option>
+            </select>
+          </label>
+        </div>
+        <label><span>Testimony *</span><textarea id="t-content" placeholder="Share the client's experience…"></textarea></label>
+        <label style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="t-featured" />
+          <span style="display:inline;text-transform:none;font-size:13px;color:var(--text)">Feature on landing page</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-testimony')">Cancel</button>
+      <button class="btn btn-primary">Save Testimony</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Asset Modal -->
+<div class="modal-overlay" id="modal-add-asset">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3>Add / Edit Asset</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-asset')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="stack">
+        <label><span>Symbol</span><input id="asset-symbol" placeholder="BTC" /></label>
+        <label><span>Amount</span><input id="asset-amount" type="number" step="any" placeholder="0.00" /></label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-asset')">Cancel</button>
+      <button class="btn btn-primary">Add Asset</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     OVERLAY (mobile sidebar)
+══════════════════════════════════════════════════════════════ -->
+<div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     LAYOUT
+══════════════════════════════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">E</div>
+      <div>
+        <div class="sidebar-logo-text">ELON-ULTRA</div>
+        <div class="sidebar-logo-sub">Admin Console</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Overview</div>
+      <div class="nav-item active" onclick="showPage('page-dashboard', this)">
+        <span class="icon"><i data-lucide="layout-dashboard"></i></span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('page-users', this)">
+        <span class="icon"><i data-lucide="users"></i></span> Users
+        <span class="nav-badge" id="nav-users-count">—</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Finance</div>
+      <div class="nav-item" onclick="showPage('page-balance', this)">
+        <span class="icon"><i data-lucide="wallet"></i></span> Balance & Portfolio
+      </div>
+      <div class="nav-item" onclick="showPage('page-transactions', this)">
+        <span class="icon"><i data-lucide="receipt"></i></span> Transactions
+      </div>
+      <div class="nav-item" onclick="showPage('page-market', this)">
+        <span class="icon"><i data-lucide="trending-up"></i></span> Market
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Platform</div>
+      <div class="nav-item" onclick="showPage('page-prompts', this)">
+        <span class="icon"><i data-lucide="megaphone"></i></span> Prompts
+        <span class="nav-badge success" id="nav-prompts-count">0</span>
+      </div>
+      <div class="nav-item" onclick="showPage('page-testimonies', this)">
+        <span class="icon"><i data-lucide="message-square"></i></span> Testimonies
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">System</div>
+      <div class="nav-item" onclick="showPage('page-settings', this)">
+        <span class="icon"><i data-lucide="settings"></i></span> Settings
+      </div>
+      <div class="nav-item" onclick="showPage('page-security', this)">
+        <span class="icon"><i data-lucide="shield"></i></span> Security
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="nav-item" style="color:rgba(255,255,255,0.25);font-size:12px;cursor:default">
+        <span class="status-dot dot-green"></span>
+        Trade Engine: <strong style="color:var(--success)">Running</strong>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN AREA ───────────────────────────────────────────── -->
+  <div class="main-area">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <button class="topbar-hamburger" onclick="toggleSidebar()">☰</button>
+      <div style="flex:1">
+        <div class="topbar-title" id="page-title">Dashboard</div>
+      </div>
+
+      <!-- Admin Key button -->
+      <div class="topbar-key-wrap" id="topbar-key-wrap">
+        <button class="topbar-key-btn" id="topbar-key-btn" title="" aria-label="">
+          <i data-lucide="lock"></i>
+          <span class="topbar-key-dot" id="topbar-key-dot"></span>
+        </button>
+        <div class="topbar-key-popup" id="topbar-key-popup">
+          <label>Access Key</label>
+          <input type="password" id="admin-key-topbar" placeholder="Enter key…" autocomplete="off" />
+          <span class="key-save" id="key-save-hint"></span>
+        </div>
+      </div>
+
+      <!-- Active User pill -->
+      <div class="user-pill">
+        Viewing: <strong id="active-user-name">—</strong>
+        <span class="user-pill-change" onclick="openModal('modal-users')">change ↗</span>
+      </div>
+
+      <!-- Theme toggle -->
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon"><i data-lucide="sun" id="icon-sun"></i><i data-lucide="moon" id="icon-moon" style="display:none"></i></span>
+        <span id="theme-label">Light</span>
+      </button>
+    </div>
+
+    <!-- Testimonies Ticker -->
+    <div class="ticker">
+      <div class="ticker-inner">
+        <span class="ticker-item"><strong>John Smith</strong> — "Honest, transparent, consistently efficient." ★★★★★</span>
+        <span class="ticker-item"><strong>Sarah Johnson</strong> — "Best crypto platform I've used." ★★★★★</span>
+        <span class="ticker-item"><strong>Michael Chen</strong> — "Real-time data and low fees. Professional-grade tools." ★★★★★</span>
+        <span class="ticker-item"><strong>Emma Davis</strong> — "Exceptional support team, fast withdrawals." ★★★★★</span>
+        <span class="ticker-item"><strong>John Smith</strong> — "Honest, transparent, consistently efficient." ★★★★★</span>
+        <span class="ticker-item"><strong>Sarah Johnson</strong> — "Best crypto platform I've used." ★★★★★</span>
+        <span class="ticker-item"><strong>Michael Chen</strong> — "Real-time data and low fees. Professional-grade tools." ★★★★★</span>
+        <span class="ticker-item"><strong>Emma Davis</strong> — "Exceptional support team, fast withdrawals." ★★★★★</span>
+      </div>
+    </div>
+
+    <!-- ── SCROLLABLE CONTENT ─────────────────────────────────── -->
+    <div class="content">
+
+      <!-- ══ PAGE: DASHBOARD ══════════════════════════════════ -->
+      <div class="page active" id="page-dashboard">
+        <div class="stack">
+
+          <!-- Admin Key Access -->
+          <div class="card card-sm">
+            <div class="section-header" style="margin-bottom:10px">
+              <div>
+                <div class="section-title">Admin Access</div>
+                <div class="section-sub">Enter key and load users</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div class="key-row" style="flex:1;min-width:200px">
+                <input type="password" id="admin-key" placeholder="x-admin-key" />
+                <button class="btn btn-primary" id="load-users-btn">Load Users</button>
+              </div>
+              <button class="btn btn-ghost" onclick="openModal('modal-users')"><i data-lucide="users"></i> View Users</button>
+            </div>
+          </div>
+
+          <!-- Stats row -->
+          <div class="stat-grid">
+
+            <div class="stat-card c-green">
+              <div class="stat-top">
+                <div class="stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                  </svg>
+                </div>
+                <span class="stat-badge badge-up" id="stat-total-badge">▲ 0%</span>
+              </div>
+              <div class="stat-label">Total Portfolio</div>
+              <div class="stat-val" id="stat-total" title="Click to edit">$0.00</div>
+              <div class="stat-sub" id="stat-change">vs. yesterday</div>
+              <div class="stat-edit-hint">click to edit</div>
+            </div>
+
+            <div class="stat-card c-blue">
+              <div class="stat-top">
+                <div class="stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                  </svg>
+                </div>
+                <span class="stat-badge badge-neu" id="stat-24h-badge">24H</span>
+              </div>
+              <div class="stat-label">24h Change</div>
+              <div class="stat-val" id="stat-24h" title="Click to edit">+$0.00</div>
+              <div class="stat-sub" id="stat-24h-pct">+0% today</div>
+              <div class="stat-edit-hint">click to edit</div>
+            </div>
+
+            <div class="stat-card c-gold">
+              <div class="stat-top">
+                <div class="stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+                  </svg>
+                </div>
+                <span class="stat-badge badge-neu">CASH</span>
+              </div>
+              <div class="stat-label">Available Balance</div>
+              <div class="stat-val" id="stat-balance" title="Click to edit">$0.00</div>
+              <div class="stat-sub">Ready to deploy</div>
+              <div class="stat-edit-hint">click to edit</div>
+            </div>
+
+            <div class="stat-card c-red">
+              <div class="stat-top">
+                <div class="stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </div>
+                <span class="stat-badge badge-neu">ACTIVE</span>
+              </div>
+              <div class="stat-label">Active Positions</div>
+              <div class="stat-val" id="stat-positions" title="Click to edit">0</div>
+              <div class="stat-sub">Holdings</div>
+              <div class="stat-edit-hint">click to edit</div>
+            </div>
+
+          </div>
+
+          <!-- Quick Actions row -->
+          <div class="row-3">
+            <!-- Simulator -->
+            <div class="card card-sm">
+              <div class="section-header">
+                <div class="section-title"><i data-lucide="cpu"></i> Simulator</div>
+              </div>
+              <div style="font-size:13px;color:var(--text-2);margin-bottom:10px">
+                Status: <span id="dash-sim-status" style="color:var(--success);font-weight:600">—</span><br>
+                Next run: <span id="dash-sim-next" style="color:var(--text-3)">—</span>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-success btn-xs" id="sim-start"><i data-lucide="play"></i> Start</button>
+                <button class="btn btn-ghost btn-xs" id="sim-pause"><i data-lucide="pause"></i> Pause</button>
+              </div>
+            </div>
+
+            <!-- Balance Quick -->
+            <div class="card card-sm">
+              <div class="section-header">
+                <div class="section-title"><i data-lucide="wallet"></i> Quick Balance</div>
+              </div>
+              <div class="stack" style="gap:8px">
+                <div style="display:flex;gap:6px">
+                  <input type="number" step="0.01" placeholder="Amount" id="quick-amount" style="flex:1" />
+                  <select id="quick-currency" style="width:80px">
+                    <option>USD</option><option>BTC</option><option>ETH</option><option>USDT</option><option>USDC</option>
+                  </select>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-primary btn-xs">Credit</button>
+                  <button class="btn btn-ghost btn-xs">Set</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Manual Trade -->
+            <div class="card card-sm">
+              <div class="section-header">
+                <div class="section-title"><i data-lucide="trending-up"></i> Trigger Trade</div>
+              </div>
+              <div style="font-size:12px;color:var(--text-2);margin-bottom:10px">
+                Trigger balance growth immediately.
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-primary btn-xs">This User</button>
+                <button class="btn btn-ghost btn-xs">All Users</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Holdings table (quick view) -->
+          <div class="card card-sm">
+            <div class="section-header">
+              <div class="section-title">User Holdings</div>
+              <a style="font-size:12px;color:var(--accent);cursor:pointer" onclick="showPage('page-balance',null)">Full view →</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Asset</th><th>Amount</th><th>Price</th><th>Value</th><th>% of Portfolio</th><th>Actions</th></tr></thead>
+                <tbody id="dash-holdings-body">
+                  <tr class="empty-row"><td colspan="6">Select a user to see holdings.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /page-dashboard -->
+
+
+      <!-- ══ PAGE: USERS ════════════════════════════════════ -->
+      <div class="page" id="page-users">
+        <div class="stack">
+          <div class="card card-sm">
+            <div class="section-header">
+              <div>
+                <div class="section-title">User Management</div>
+                <div class="section-sub">Browse, select, and manage individual users</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="openModal('modal-users')"><i data-lucide="users"></i> Open Users List</button>
+                <a class="btn btn-ghost" href="/admin-chat.html" target="_blank" rel="noopener"><i data-lucide="message-circle"></i> Chat Support</a>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th><th>Name</th><th>Email</th><th>Balance</th>
+                    <th>Verified</th><th>Joined</th><th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  <tr class="empty-row"><td colspan="7">Load users via admin key.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div><!-- /page-users -->
+
+
+      <!-- ══ PAGE: BALANCE & PORTFOLIO ══════════════════════ -->
+      <div class="page" id="page-balance">
+        <div class="stack">
+
+          <!-- Balance Management (full) -->
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title"><i data-lucide="dollar-sign"></i> Balance Management</div>
+            </div>
+            <form id="credit-form">
+              <div class="form-grid form-3" style="margin-bottom:12px">
+                <label><span>Amount</span><input id="credit-amount" type="number" step="0.01" required placeholder="0.00" /></label>
+                <label><span>Currency</span>
+                  <select id="credit-currency">
+                    <option>USD</option><option>BTC</option><option>ETH</option><option>USDT</option><option>USDC</option>
+                  </select>
+                </label>
+                <label><span>Tax ID (optional)</span><input id="credit-tax-id" placeholder="e.g. TX-00291" /></label>
+              </div>
+              <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Credit (Add)</button>
+                <button type="button" class="btn btn-ghost">Set Balance</button>
+                <button type="button" class="btn btn-ghost" onclick="openModal('modal-edit-value')">Edit Total Value</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Portfolio Holdings -->
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title"><i data-lucide="briefcase"></i> Portfolio Holdings</div>
+            </div>
+            <form id="portfolio-form">
+              <div style="margin-bottom:12px">
+                <button type="button" class="btn btn-ghost btn-xs" onclick="openModal('modal-add-asset')">+ Add Asset</button>
+              </div>
+              <div id="portfolio-fields" class="stack" style="max-height:220px;overflow-y:auto;margin-bottom:12px">
+                <div style="text-align:center;color:var(--text-3);font-size:13px;padding:18px">No assets added.</div>
+              </div>
+              <button type="submit" class="btn btn-primary"><i data-lucide="save"></i> Save Holdings</button>
+            </form>
+          </div>
+
+          <!-- Holdings Table -->
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">Holdings Overview</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Asset</th><th>Amount</th><th>Price</th><th>Value</th><th>% Portfolio</th><th>Actions</th></tr></thead>
+                <tbody id="holdings-table-body">
+                  <tr class="empty-row"><td colspan="6">No holdings. Select a user.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recent Trades -->
+          <div class="card">
+            <div class="section-header">
+              <div class="section-title">Recent Trades</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Type</th><th>Asset</th><th>Amount</th><th>Price</th><th>Total</th></tr></thead>
+                <tbody id="recent-trades-body">
+                  <tr class="empty-row"><td colspan="6">Select a user to view trades.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /page-balance -->
+
+
+      <!-- ══ PAGE: TRANSACTIONS ═════════════════════════════ -->
+      <div class="page" id="page-transactions">
+        <div class="stack">
+          <div class="section-header">
+            <div class="section-title">Transaction Management</div>
+            <div class="btn-group">
+              <button class="btn btn-ghost btn-xs">Refresh All</button>
+              <button class="btn btn-danger btn-xs"><i data-lucide="trash-2"></i> Clear All Trades</button>
+            </div>
+          </div>
+
+          <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab(event,'tx-deposits')">Deposits</button>
+            <button class="tab-btn" onclick="switchTab(event,'tx-withdrawals')">Withdrawals</button>
+            <button class="tab-btn" onclick="switchTab(event,'tx-growth')">Growth Trades</button>
+            <button class="tab-btn" onclick="switchTab(event,'tx-all')">All Transactions</button>
+          </div>
+
+          <!-- Deposits -->
+          <div class="tab-pane active" id="tx-deposits">
+            <div class="section-header">
+              <span class="section-title" style="font-size:13px">Deposit History</span>
+              <div class="btn-group">
+                <button class="btn btn-ghost btn-xs">Refresh</button>
+                <button class="btn btn-primary btn-xs">+ Add Deposit</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>User</th><th>Method</th><th>Amount</th><th>Status</th><th>TxID</th><th>Actions</th></tr></thead>
+                <tbody id="deposits-tbody">
+                  <tr class="empty-row"><td colspan="7">No deposits yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Withdrawals -->
+          <div class="tab-pane" id="tx-withdrawals">
+            <div class="section-header">
+              <span class="section-title" style="font-size:13px">Withdrawal History</span>
+              <div class="btn-group">
+                <button class="btn btn-ghost btn-xs">Refresh</button>
+                <button class="btn btn-primary btn-xs">+ Add Withdrawal</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>User</th><th>Method</th><th>Amount</th><th>Status</th><th>Fee Status</th><th>TxID</th><th>Actions</th></tr></thead>
+                <tbody id="withdrawals-tbody">
+                  <tr class="empty-row"><td colspan="8">No withdrawals yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Growth Trades -->
+          <div class="tab-pane" id="tx-growth">
+            <div class="section-header" style="margin-bottom:14px">
+              <span class="section-title" style="font-size:13px">Balance Growth Trades</span>
+              <div class="btn-group">
+                <button class="btn btn-ghost btn-xs">Refresh</button>
+                <button class="btn btn-primary btn-xs">Trigger Now</button>
+              </div>
+            </div>
+            <div class="growth-stats">
+              <div class="growth-stat">
+                <div class="growth-stat-label">Total Trades</div>
+                <div class="growth-stat-value" id="growth-total">—</div>
+              </div>
+              <div class="growth-stat">
+                <div class="growth-stat-label">Total Volume</div>
+                <div class="growth-stat-value" id="growth-volume">—</div>
+              </div>
+              <div class="growth-stat">
+                <div class="growth-stat-label">Avg Boost / Trade</div>
+                <div class="growth-stat-value" style="color:var(--success)" id="growth-avg">—</div>
+              </div>
+              <div class="growth-stat">
+                <div class="growth-stat-label">Peak Balance</div>
+                <div class="growth-stat-value" id="growth-peak">—</div>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Date</th><th>Type</th><th>Asset</th><th>Amount</th><th>Price</th><th>Total</th><th>Before</th><th>After</th><th>Boost %</th></tr></thead>
+                <tbody id="growth-tbody">
+                  <tr class="empty-row"><td colspan="9">Select a user to view growth trades.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- All Transactions -->
+          <div class="tab-pane" id="tx-all">
+            <div class="section-header">
+              <span class="section-title" style="font-size:13px">All Transactions</span>
+              <button class="btn btn-primary btn-xs">+ Add Transaction</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>User</th><th>Type</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody id="all-tx-tbody">
+                  <tr class="empty-row"><td colspan="7">No transactions.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /page-transactions -->
+
+
+      <!-- ══ PAGE: MARKET ═══════════════════════════════════ -->
+      <div class="page" id="page-market">
+        <div class="stack">
+          <div class="section-header">
+            <div class="section-title"><i data-lucide="trending-up"></i> Live Market Overview</div>
+            <button class="btn btn-ghost btn-xs">Refresh Prices</button>
+          </div>
+          <div class="table-wrap">
+            <table id="market-table">
+              <thead><tr><th>Asset</th><th>Price</th><th>24h Change</th><th>Volume</th><th>Action</th></tr></thead>
+              <tbody id="market-body">
+                <tr class="empty-row"><td colspan="5">Loading market data…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /page-market -->
+
+
+      <!-- ══ PAGE: PROMPTS ══════════════════════════════════ -->
+      <div class="page" id="page-prompts">
+        <div class="stack">
+
+          <!-- Send Prompt -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="section-title"><i data-lucide="megaphone"></i> Send Prompt to Users</div>
+                <div class="section-sub">Broadcast or target specific users</div>
+              </div>
+            </div>
+            <div class="stack">
+              <label><span>Message</span>
+                <textarea id="prompt-message" placeholder="Message to show as a prompt to users…"></textarea>
+              </label>
+              <label><span>Target User IDs (leave blank to broadcast)</span>
+                <input id="prompt-targets" placeholder="e.g. 1, 2, 5  — or leave empty for all" />
+              </label>
+              <div>
+                <button class="btn btn-primary">Send Prompt</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Prompts -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="section-title"><i data-lucide="bell"></i> Active Prompts</div>
+                <div class="section-sub">Disable to stop showing to users</div>
+              </div>
+              <button class="btn btn-ghost btn-xs">Refresh</button>
+            </div>
+            <div class="stack" id="active-prompts-list">
+              <!-- Example item (populated via JS) -->
+              <div class="prompt-item">
+                <div>
+                  <div class="prompt-text">Your account is under review. Please contact support.</div>
+                  <div class="prompt-meta">Sent: 2026-04-05 · Target: All Users · <span class="badge badge-green">Active</span></div>
+                </div>
+                <button class="btn btn-danger btn-xs">Disable</button>
+              </div>
+              <div class="prompt-item">
+                <div>
+                  <div class="prompt-text">Withdrawal processing — may take up to 48 hours.</div>
+                  <div class="prompt-meta">Sent: 2026-04-06 · Target: User #14 · <span class="badge badge-green">Active</span></div>
+                </div>
+                <button class="btn btn-danger btn-xs">Disable</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /page-prompts -->
+
+
+      <!-- ══ PAGE: TESTIMONIES ══════════════════════════════ -->
+      <div class="page" id="page-testimonies">
+        <div class="stack">
+          <div class="section-header">
+            <div class="section-title"><i data-lucide="message-square"></i> Testimonies</div>
+            <div class="btn-group">
+              <button class="btn btn-ghost btn-xs">Refresh</button>
+              <button class="btn btn-primary btn-xs" onclick="openModal('modal-testimony')">+ Add Testimony</button>
+            </div>
+          </div>
+
+          <!-- Grid of testimonies -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px" id="testimonies-grid">
+            <!-- Example cards (populated via JS) -->
+            <div class="testimony-card">
+              <div class="testimony-card-header">
+                <div>
+                  <div class="testimony-card-name">John Smith</div>
+                  <div class="testimony-card-title">Independent Investor</div>
+                </div>
+                <span class="badge badge-blue">Featured</span>
+              </div>
+              <div class="testimony-card-stars">★★★★★</div>
+              <div class="testimony-card-text">"The trading service has been honest, transparent, and consistently efficient."</div>
+              <div class="btn-group">
+                <button class="btn btn-ghost btn-xs">Edit</button>
+                <button class="btn btn-danger btn-xs">Delete</button>
+              </div>
+            </div>
+
+            <div class="testimony-card">
+              <div class="testimony-card-header">
+                <div>
+                  <div class="testimony-card-name">Sarah Johnson</div>
+                  <div class="testimony-card-title">CEO, Tech Startup</div>
+                </div>
+                <span class="badge badge-gray">Standard</span>
+              </div>
+              <div class="testimony-card-stars">★★★★★</div>
+              <div class="testimony-card-text">"Best crypto trading platform I have used. Customer support is exceptional."</div>
+              <div class="btn-group">
+                <button class="btn btn-ghost btn-xs">Edit</button>
+                <button class="btn btn-danger btn-xs">Delete</button>
+              </div>
+            </div>
+
+            <div class="testimony-card">
+              <div class="testimony-card-header">
+                <div>
+                  <div class="testimony-card-name">Michael Chen</div>
+                  <div class="testimony-card-title">Quant Trader</div>
+                </div>
+                <span class="badge badge-gray">Standard</span>
+              </div>
+              <div class="testimony-card-stars">★★★★★</div>
+              <div class="testimony-card-text">"Real-time data and low fees make this my go-to platform."</div>
+              <div class="btn-group">
+                <button class="btn btn-ghost btn-xs">Edit</button>
+                <button class="btn btn-danger btn-xs">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /page-testimonies -->
+
+
+      <!-- ══ PAGE: SETTINGS ═════════════════════════════════ -->
+      <div class="page" id="page-settings">
+        <div class="stack">
+
+          <!-- Deposit Addresses -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="section-title">Deposit Addresses</div>
+                <div class="section-sub">Wallet addresses shown on the deposit page</div>
+              </div>
+            </div>
+            <div class="addr-grid" style="margin-bottom:14px">
+              <label><span>BTC</span><input id="dep-btc" placeholder="bc1…" /></label>
+              <label><span>ETH</span><input id="dep-eth" placeholder="0x…" /></label>
+              <label><span>USDT</span><input id="dep-usdt" placeholder="T…" /></label>
+              <label><span>USDC</span><input id="dep-usdc" placeholder="0x…" /></label>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-primary">Save Addresses</button>
+              <button class="btn btn-ghost">Reset to Defaults</button>
+            </div>
+          </div>
+
+          <!-- Simulator Full Controls -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="section-title"><i data-lucide="cpu"></i> Balance Growth Simulator</div>
+                <div class="section-sub">Controls and schedule for automated balance growth</div>
+              </div>
+            </div>
+            <div style="font-size:13px;color:var(--text-2);margin-bottom:14px">
+              Status: <span style="color:var(--success);font-weight:700"><span class="status-dot dot-green"></span>Running</span>
+              &nbsp;·&nbsp; Next run: <span style="color:var(--text-3)">in 4 min</span>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-success"><i data-lucide="play"></i> Start Simulator</button>
+              <button class="btn btn-warn"><i data-lucide="pause"></i> Pause Simulator</button>
+              <button class="btn btn-primary">Trigger Growth — This User</button>
+              <button class="btn btn-ghost">Trigger Growth — All Users</button>
+            </div>
+          </div>
+
+          <!-- User Preview -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="section-title">Admin Preview User</div>
+                <div class="section-sub">Select the user whose data is shown across the admin</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <select id="current-user-select" style="min-width:220px">
+                <option value="">— none —</option>
+              </select>
+              <button class="btn btn-primary">Set Preview User</button>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /page-settings -->
+
+
+      <!-- ══ PAGE: SECURITY ═════════════════════════════════ -->
+      <div class="page" id="page-security">
+        <div class="stack">
+
+          <!-- Email Verification Codes -->
+          <div class="card">
+            <div class="section-header">
+              <div>
+                <div class="section-title"><i data-lucide="shield"></i> Email Verification Codes</div>
+                <div class="section-sub">OTP codes requested by users — valid 10 minutes</div>
+              </div>
+              <button class="btn btn-ghost btn-xs"><i data-lucide="refresh-cw"></i> Refresh</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>User</th><th>Email</th><th style="text-align:center">Code</th><th style="text-align:center">Expires In</th><th>Requested At</th></tr></thead>
+                <tbody id="otp-tbody">
+                  <tr class="empty-row"><td colspan="5">Enter admin key and click Refresh.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="danger-card">
+            <div class="danger-title"><i data-lucide="alert-triangle"></i> Danger Zone</div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" class="form-2-danger">
+              <div>
+                <div class="danger-desc">Delete all trade history for every user. This cannot be undone.</div>
+                <button class="btn btn-danger"><i data-lucide="trash-2"></i> Clear All Trades</button>
+              </div>
+              <div>
+                <div class="danger-desc">Wipe all data for the currently selected user.</div>
+                <button class="btn btn-danger">Reset Selected User</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /page-security -->
+
+
+    </div><!-- /content -->
+  </div><!-- /main-area -->
+</div><!-- /layout -->
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     SCRIPT — Navigation & UI Logic
+══════════════════════════════════════════════════════════════ -->
+<script>
+  // ── Navigation ──────────────────────────────────────────────
+  const pageTitles = {
+    'page-dashboard':    'Dashboard',
+    'page-users':        'Users',
+    'page-balance':      'Balance & Portfolio',
+    'page-transactions': 'Transactions',
+    'page-market':       'Market',
+    'page-prompts':      'Prompts',
+    'page-testimonies':  'Testimonies',
+    'page-settings':     'Settings',
+    'page-security':     'Security',
+  };
+
+  function showPage(id, navEl) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(id)?.classList.add('active');
+    if (navEl) navEl.classList.add('active');
+    document.getElementById('page-title').textContent = pageTitles[id] || '';
+    localStorage.setItem('admin_last_page', id);
+    // close sidebar on mobile
+    if (window.innerWidth <= 900) closeSidebar();
+  }
+
+  // Restore last visited page on load
+  (function () {
+    const last = localStorage.getItem('admin_last_page');
+    if (last && document.getElementById(last)) {
+      const navEl = document.querySelector(`[onclick*="${last}"]`);
+      showPage(last, navEl);
+    }
+  })();
+
+  // ── Sidebar ──────────────────────────────────────────────────
+  function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('sidebar-overlay');
+    sb.classList.toggle('open');
+    ov.classList.toggle('open');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+  }
+
+  // ── Modals ───────────────────────────────────────────────────
+  function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+  function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+
+  // Close modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+
+  // ── Tabs ─────────────────────────────────────────────────────
+  function switchTab(e, paneId) {
+    const bar = e.target.closest('.tab-bar');
+    bar?.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+
+    const container = bar?.nextElementSibling?.parentNode;
+    container?.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    document.getElementById(paneId)?.classList.add('active');
+  }
+
+  // ── Theme ────────────────────────────────────────────────────
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('icon-sun').style.display  = isDark ? 'none' : 'inline-flex';
+    document.getElementById('icon-moon').style.display = isDark ? 'inline-flex' : 'none';
+    document.getElementById('theme-label').textContent = isDark ? 'Dark' : 'Light';
+  }
+
+  // ── Mock: populate sample user cards in modal ────────────────
+  const mockUsers = [
+    { id: 1, name: 'Alice Mercer',  email: 'alice@example.com',  balance: '$14,320.50', verified: true  },
+    { id: 2, name: 'Bob Tran',      email: 'bob@example.com',    balance: '$3,800.00',  verified: true  },
+    { id: 3, name: 'Carol Singh',   email: 'carol@example.com',  balance: '$88,200.00', verified: false },
+    { id: 4, name: 'David Kim',     email: 'david@example.com',  balance: '$500.00',    verified: true  },
+  ];
+
+  function renderUserModal() {
+    const body = document.getElementById('users-list-body');
+    body.innerHTML = mockUsers.map(u => `
+      <div class="user-card" onclick="selectUser(${u.id},'${u.name}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div>
+            <div class="user-card-name">${u.name}</div>
+            <div class="user-card-email">${u.email}</div>
+            <div class="user-card-balance">${u.balance}</div>
+          </div>
+          <span class="badge ${u.verified ? 'badge-green' : 'badge-red'}">${u.verified ? 'Verified' : 'Unverified'}</span>
+        </div>
+        <div class="user-card-meta">
+          <span class="badge badge-gray">#${u.id}</span>
+          <button class="btn btn-primary btn-xs">Select</button>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('nav-users-count').textContent = mockUsers.length;
+  }
+
+  function selectUser(id, name) {
+    document.getElementById('active-user-name').textContent = name;
+    closeModal('modal-users');
+  }
+
+  // Simulate load users on key entry
+  document.getElementById('load-users-btn')?.addEventListener('click', () => {
+    const key = document.getElementById('admin-key').value.trim();
+    if (!key) { alert('Enter admin key first.'); return; }
+    renderUserModal();
+    openModal('modal-users');
+  });
+
+  // Init with sample data shown on modal open
+  renderUserModal();
+
+  // ── Topbar admin-key popup + sync ────────────────────────────
+  (function () {
+    const btn        = document.getElementById('topbar-key-btn');
+    const popup      = document.getElementById('topbar-key-popup');
+    const wrap       = document.getElementById('topbar-key-wrap');
+    const topbarInput= document.getElementById('admin-key-topbar');
+    const dashInput  = document.getElementById('admin-key');
+    const dot        = document.getElementById('topbar-key-dot');
+    const hint       = document.getElementById('key-save-hint');
+
+    function syncDot(val) { dot.classList.toggle('active', val.length > 0); }
+    function setHint(msg) { hint.textContent = msg; setTimeout(() => { hint.textContent = ''; }, 1800); }
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = popup.classList.contains('open');
+      popup.classList.toggle('open');
+      if (!isOpen) {
+        const r = btn.getBoundingClientRect();
+        popup.style.top  = (r.bottom + 6) + 'px';
+        // keep popup inside viewport on mobile
+        const pw = 210;
+        const right = window.innerWidth - r.right;
+        popup.style.right = Math.max(4, right) + 'px';
+        popup.style.left  = 'auto';
+        topbarInput.focus();
+      }
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      if (!wrap.contains(e.target)) popup.classList.remove('open');
+    });
+
+    topbarInput.addEventListener('input', () => {
+      dashInput.value = topbarInput.value;
+      syncDot(topbarInput.value);
+    });
+    dashInput.addEventListener('input', () => {
+      topbarInput.value = dashInput.value;
+      syncDot(dashInput.value);
+    });
+    topbarInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        sessionStorage.setItem('admin_key', topbarInput.value);
+        setHint('saved ✓');
+        popup.classList.remove('open');
+      }
+      if (e.key === 'Escape') popup.classList.remove('open');
+    });
+
+    // Restore from sessionStorage on refresh
+    const saved = sessionStorage.getItem('admin_key');
+    if (saved) { topbarInput.value = saved; dashInput.value = saved; syncDot(saved); }
+  })();
+
+  // Initialise all Lucide icons
+  lucide.createIcons();
+
+  // ── Inline-editable stat values ──────────────────────────────
+  document.querySelectorAll('.stat-val').forEach(el => {
+    el.addEventListener('click', () => {
+      if (el.contentEditable === 'true') return;
+      el.contentEditable = 'true';
+      el.focus();
+      // Select all text
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    });
+    el.addEventListener('blur', () => {
+      el.contentEditable = 'false';
+    });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); el.blur(); }
+    });
+  });
+</script>
+
+</body>
+</html>

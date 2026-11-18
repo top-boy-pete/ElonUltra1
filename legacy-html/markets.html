@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Markets — ELON-ULTRA</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .testimonies-banner { width: 100%; padding: 8px 12px; position: relative; min-height: 36px; display: flex; align-items: center; margin-bottom: 16px; box-sizing: border-box; overflow: hidden; }
+    .testimonies-banner-content { display: flex; gap: 24px; width: max-content; align-items: center; will-change: transform; }
+    .testimonies-banner-item { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; padding: 12px 18px; background: rgba(251, 191, 36, 0.2); border-radius: 6px; backdrop-filter: blur(8px); font-size: 13px; color: #e0e7ff; border: 1.5px solid rgba(251, 191, 36, 0.6); min-width: 280px; max-width: 380px; }
+    .testimonies-banner-item strong { color: #fbbf24; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .testimonies-banner-item-text { font-style: italic; line-height: 1.3; font-size: 12px; color: #cbd5e1; }
+    @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @media (max-width: 768px) { .testimonies-banner { padding: 6px 8px; min-height: 32px; margin-bottom: 12px; } .testimonies-banner-content { gap: 18px; } .testimonies-banner-item { padding: 10px 14px; font-size: 12px; min-width: 240px; max-width: 300px; border-radius: 5px; } .testimonies-banner-item strong { font-size: 11px; } .testimonies-banner-item-text { font-size: 11px; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="landing.html" class="brand"><img src="images/elon-logo-v2.svg" alt="EUE"><span style="display:block">ELON-ULTRA</span></a>
+      <nav class="nav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="markets.html">Markets</a>
+        <a href="settings.html">Account</a>
+        <a href="contact.html">Support</a>
+        <button class="theme-toggle" style="margin:0 12px">Light Mode</button>
+        <a href="#" onclick="logout()" style="color:#ef4444">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="app-wrapper">
+    <aside class="sidebar">
+      <a href="dashboard.html" class="sidebar-link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:8px"><path d="M3 13h8V3H3v10zM13 21h8V11h-8v10zM13 3v6h8V3h-8zM3 21h8v-6H3v6z" fill="currentColor"/></svg>Dashboard</a>
+      <a href="markets.html" class="sidebar-link active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:8px"><path d="M4 18H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M7 14V6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12 14V10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17 14V4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Markets</a>
+      <a href="transactions.html" class="sidebar-link">Transactions</a>
+      <a href="settings.html" class="sidebar-link">Account</a>
+      <a href="help.html" class="sidebar-link">Help & Docs</a>
+    </aside>
+
+    <main class="main-content">
+      <!-- Testimonies Scrolling Banner -->
+      <div id="testimonies-banner" class="testimonies-banner"></div>
+
+      <h1>Markets</h1>
+      <p class="muted">Real-time cryptocurrency market data</p>
+
+      <!-- Search & Filter -->
+      <div class="form" style="flex-direction:row;gap:12px;max-width:none;margin:24px 0">
+        <input type="text" id="market-search" placeholder="Search assets..." style="flex:1;max-width:400px">
+        <select id="sort-select" style="max-width:200px">
+          <option value="name">Sort by Name</option>
+          <option value="price">Sort by Price</option>
+          <option value="change">Sort by 24h Change</option>
+        </select>
+      </div>
+
+      <!-- Market Table -->
+      <div class="table-wrapper">
+        <div class="table-header">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3>Cryptocurrency Prices</h3>
+            <button type="button" class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="toggleCollapse('market-table')">See More</button>
+          </div>
+        </div>
+        <div id="market-table-wrapper" style="overflow-x:auto;overflow-y:auto;max-height:250px;transition:max-height 0.3s ease">
+        <table id="market-table" style="min-width:900px;table-layout:auto">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Price</th>
+              <th>24h Change</th>
+              <th>24h High</th>
+              <th>24h Low</th>
+              <th>Volume</th>
+              <th>Market Cap</th>
+            </tr>
+          </thead>
+          <tbody id="market-tbody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <!-- Trending & Watchlist -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:48px">
+        <div>
+          <h2>Trending Today</h2>
+          <div class="table-wrapper">
+            <div class="table-header">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <h3>Top Movers</h3>
+                <button type="button" class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="toggleCollapse('trending-table')">See More</button>
+              </div>
+            </div>
+            <div id="trending-table-wrapper" style="overflow:hidden;max-height:250px;transition:max-height 0.3s ease">
+            <table>
+              <thead>
+                <tr><th>Asset</th><th>Price Change</th></tr>
+              </thead>
+              <tbody id="trending-tbody">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2>Your Watchlist</h2>
+          <div class="table-wrapper">
+            <div class="table-header">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <h3>Watchlist</h3>
+                <button type="button" class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="toggleCollapse('watchlist-table')">See More</button>
+              </div>
+            </div>
+            <div id="watchlist-table-wrapper" style="overflow:hidden;max-height:250px;transition:max-height 0.3s ease">
+            <table>
+              <thead>
+                <tr><th>Asset</th><th>Price</th></tr>
+              </thead>
+              <tbody id="watchlist-tbody">
+                <tr><td colspan="2" style="text-align:center;color:var(--muted)">No assets in watchlist</td></tr>
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">&copy; 2025 ELON-ULTRA — Professional Crypto Trading</div>
+  </footer>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-bottom-nav">
+    <a href="/dashboard.html" class="nav-item" title="Dashboard">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3zm4-8h2v16H7zm4-2h2v18h-2zm4 4h2v14h-2zm4-4h2v18h-2z"/></svg>
+    </a>
+    <a href="/markets.html" class="nav-item active" title="Markets">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h1v7H3zm3-4h1v11H6zm3-3h1v14H9zm3 6h1v8h-1zm3-2h1v10h-1zm3 4h1v6h-1z"/><path d="M19 3v1" stroke="currentColor" stroke-width="2"/></svg>
+    </a>
+    <a href="/transactions.html" class="nav-item" title="Transactions">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+    </a>
+    <a href="/settings.html" class="nav-item" title="Account">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </a>
+    <a href="/help.html" class="nav-item" title="Help">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    </a>
+  </nav>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    // *** CRITICAL: Protect markets page from unauthorized access ***
+    (function() {
+      if (!AuthService.isAuthenticated()) {
+        console.warn('Markets access denied: User not authenticated');
+        window.location.href = '/login.html';
+        return;
+      }
+      if (!AuthService.validateTokenExpiry()) {
+        console.warn('Markets access denied: Token expired');
+        window.location.href = '/login.html';
+        return;
+      }
+      AuthService.startTokenValidation();
+      console.log('Markets authentication check passed');
+    })();
+  </script>
+  <script src="/js/portfolio.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/animations.js"></script>
+  <script src="/js/markets.js"></script>
+  <script src="/js/theme-switcher.js"></script>
+  <script src="/js/testimonies.js"></script>
+  <script src="/js/scrolling-banner.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    // Collapse/expand tables
+    function toggleCollapse(tableId) {
+      const wrapper = document.getElementById(tableId + '-wrapper');
+      const button = event.target;
+      const isCollapsed = wrapper.style.maxHeight === '250px';
+      
+      if (isCollapsed) {
+        wrapper.style.maxHeight = '500px';
+        button.textContent = 'Show Less';
+      } else {
+        wrapper.style.maxHeight = '250px';
+        button.textContent = 'See More';
+      }
+    }
+
+    // Logout function
+    function logout() {
+      AuthService.stopTokenValidation();
+      AuthService.logout();
+      window.location.href = '/login.html';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign Up — ELON-ULTRA</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center">
+      <a href="landing.html" class="brand"><img src="images/elon-logo-v2.svg" alt="EUE"><span style="display:block">ELON-ULTRA</span></a>
+      <button class="theme-toggle" style="margin:0">☀️ Light Mode</button>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:600px;margin:80px auto;padding:24px;text-align:center">
+    <!-- Testimonies Scrolling Banner -->
+    <!-- <div id="testimonies-banner" class="testimonies-banner"></div> -->
+
+    <h1>Create Your Account</h1>
+    <p class="muted">Join thousands of traders on ELON-ULTRA</p>
+    <form id="signup-form" class="form">
+      <label><span>Full Name</span>
+        <input type="text" name="name" placeholder="John Doe" required>
+      </label>
+      <label><span>Email Address</span>
+        <input type="email" name="email" placeholder="your@email.com" required>
+      </label>
+      <label><span>Password</span>
+        <input type="password" name="password" placeholder="••••••••" required minlength="8">
+      </label>
+      <label style="flex-direction:row;align-items:center;gap:8px">
+        <input type="checkbox" required>
+        <span>I agree to the <a href="#" style="color:var(--accent)">Terms of Service</a></span>
+      </label>
+      <button type="submit" class="btn" style="width:100%">Create Account</button>
+    </form>
+    <p class="muted">Already have an account? <a href="login.html" style="color:var(--accent)">Sign in here</a></p>
+
+  <footer class="site-footer">
+    <div class="container">&copy; 2025 ELON-ULTRA — Professional Crypto Trading</div>
+  </footer>
+
+  <script src="js/auth.js"></script>
+  <script src="js/testimonies.js"></script>
+  <script src="js/scrolling-banner.js"></script>
+  <script src="js/animations.js"></script>
+  <script>
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const { name, email, password } = Object.fromEntries(new FormData(e.target));
+
+      try {
+        await AuthService.signup(name, email, password);
+        alert('Account created! Please sign in.');
+        window.location.href = '/login.html';
+      } catch (err) {
+        alert('Signup failed: ' + err.message);
+      }
+    });
+  </script>
+  <script src="js/theme-switcher.js"></script>
+</body>
+</html>

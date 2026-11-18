@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Deposit — ELON-ULTRA</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .testimonies-banner { width: 100%; padding: 8px 12px; position: relative; min-height: 36px; display: flex; align-items: center; margin-bottom: 16px; box-sizing: border-box; overflow: hidden; }
+    .testimonies-banner-content { display: flex; gap: 24px; animation: scroll-left 45s linear infinite; width: max-content; align-items: center; will-change: transform; }
+    .testimonies-banner-item { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; padding: 12px 18px; background: rgba(251, 191, 36, 0.2); border-radius: 6px; backdrop-filter: blur(8px); font-size: 13px; color: #e0e7ff; border: 1.5px solid rgba(251, 191, 36, 0.6); min-width: 280px; max-width: 380px; }
+    .testimonies-banner-item strong { color: #fbbf24; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .testimonies-banner-item-text { font-style: italic; line-height: 1.3; font-size: 12px; color: #cbd5e1; }
+    @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @media (max-width: 768px) { .testimonies-banner { padding: 6px 8px; min-height: 32px; margin-bottom: 12px; } .testimonies-banner-content { gap: 18px; } .testimonies-banner-item { padding: 10px 14px; font-size: 12px; min-width: 240px; max-width: 300px; border-radius: 5px; } .testimonies-banner-item strong { font-size: 11px; } .testimonies-banner-item-text { font-size: 11px; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="landing.html" class="brand"><img src="images/elon-logo-v2.svg" alt="EUE"><span style="display:block">ELON-ULTRA</span></a>
+      <nav class="nav">
+        <a href="dashboard.html">Dashboard</a>
+        <a href="markets.html">Markets</a>
+        <a href="settings.html">Account</a>
+        <a href="contact.html">Support</a>
+        <button class="theme-toggle" style="margin:0 12px">☀️ Light Mode</button>
+        <a href="#" onclick="logout()" style="color:#ef4444">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:700px;margin:48px auto;padding:24px">
+    <div id="testimonies-banner" class="testimonies-banner"></div>
+    <h1>Add Funds</h1>
+    <p class="muted">Deposit funds to your account</p>
+
+    <div class="card" style="padding:20px;margin-top:16px" id="form-section">
+      <form id="deposit-form">
+        <label><span>Amount (USD)</span>
+          <input type="number" name="amount" step="0.01" min="0.01" placeholder="100.00" required>
+        </label>
+
+        <label><span>Method</span>
+          <select id="method-select" name="method" required>
+            <option value="bank">Bank Transfer</option>
+            <option value="card">Card</option>
+            <option value="crypto">Crypto Transfer</option>
+          </select>
+        </label>
+
+        <div id="crypto-section" style="display:none;margin-top:12px">
+          <label><span>Currency</span>
+            <select id="currency-select" name="currency">
+              <option value="BTC">BTC</option>
+              <option value="ETH">ETH</option>
+              <option value="USDT">USDT</option>
+              <option value="USDC">USDC</option>
+            </select>
+          </label>
+
+          <div id="address-box" style="margin-top:12px">
+            <div style="word-break:break-all"><strong>Deposit Address:</strong> <span id="deposit-address"></span></div>
+            <div style="margin-top:8px">
+              <img id="qr-img" alt="QR" style="width:160px;height:160px;border:1px solid #eee" />
+            </div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" id="copy-btn" class="btn">Copy Address</button>
+              <span style="font-size:13px;color:var(--muted)">Transfer to this address from Binance before confirming.</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:16px;flex-wrap:wrap">
+          <button type="button" class="btn" id="binance-btn">Continue on Binance</button>
+          <button type="button" class="btn btn-secondary" id="deposit-complete-btn">I have completed deposit</button>
+          <a class="btn btn-link" href="transactions.html">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">&copy; 2025 ELON-ULTRA — Professional Crypto Trading</div>
+  </footer>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    // *** CRITICAL: Protect deposit page from unauthorized access ***
+    (function() {
+      if (!AuthService.isAuthenticated()) {
+        console.warn('Deposit access denied: User not authenticated');
+        window.location.href = '/login.html';
+        return;
+      }
+      if (!AuthService.validateTokenExpiry()) {
+        console.warn('Deposit access denied: Token expired');
+        window.location.href = '/login.html';
+        return;
+      }
+      AuthService.startTokenValidation();
+      console.log('Deposit authentication check passed');
+    })();
+
+    function logout(){
+      AuthService.stopTokenValidation();
+      AuthService.logout();
+      window.location.href = '/login.html';
+    }
+
+    const apiBase = (location.hostname === 'localhost' ? `http://${location.hostname}:5001/api` : '/api');
+
+    const methodSelect = document.getElementById('method-select');
+    const cryptoSection = document.getElementById('crypto-section');
+    const currencySelect = document.getElementById('currency-select');
+    const addressBox = document.getElementById('address-box');
+    const depositAddressEl = document.getElementById('deposit-address');
+    const qrImg = document.getElementById('qr-img');
+    const copyBtn = document.getElementById('copy-btn');
+    const binanceBtn = document.getElementById('binance-btn');
+    const completeBtn = document.getElementById('deposit-complete-btn');
+
+    binanceBtn.addEventListener('click', () => {
+      const amt = document.querySelector('[name="amount"]').value;
+      const url = new URL('https://www.binance.com/en/buy-sell-crypto');
+      if (amt) url.searchParams.set('amount', amt);
+      window.open(url.toString(), '_blank', 'noopener');
+    });
+
+    completeBtn.addEventListener('click', async () => {
+      const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+      if (!token) {
+        return window.location.href = '/login.html';
+      }
+      const amount = parseFloat(document.querySelector('[name="amount"]').value || '0');
+      if (!amount || amount <= 0) {
+        alert('Enter an amount before confirming.');
+        return;
+      }
+      try {
+        const res = await fetch(apiBase + '/transactions/deposit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ amount, method: methodSelect.value })
+        });
+        if (res.ok) {
+          // Redirect to transactions page to show the pending deposit
+          setTimeout(() => {
+            window.location.href = 'transactions.html';
+          }, 1500);
+          // Show confirmation message while redirecting
+          const formSection = document.getElementById('form-section');
+          formSection.innerHTML = '<div class="alert alert-success">✓ Deposit confirmation received! Redirecting to your transaction history...</div>';
+          return;
+        }
+        const text = await res.text();
+        alert('Deposit confirmation failed: ' + (text || res.statusText));
+      } catch (err) {
+        console.error(err);
+        alert('Network error while confirming deposit');
+      }
+    });
+
+    methodSelect.addEventListener('change', async (ev) => {
+      const v = ev.target.value;
+      if (v === 'crypto') {
+        cryptoSection.style.display = 'block';
+        await fetchAndShowAddress(currencySelect.value);
+      } else {
+        cryptoSection.style.display = 'none';
+        addressBox.style.display = 'none';
+      }
+    });
+
+    currencySelect.addEventListener('change', () => fetchAndShowAddress(currencySelect.value));
+
+    const MOCK_ADDRESSES = {
+      BTC: 'bc1qmockaddressforbtc00000000000000',
+      ETH: '0xMockEthereumAddressForDeposit0000000000000000',
+      USDT: 'TMockTetherAddressUSDT000000000000000',
+      USDC: '0xMockUSDCCryptoAddress0000000000000000'
+    };
+
+    function getCustomDepositAddresses(){
+      try{ return JSON.parse(localStorage.getItem('customDepositAddresses')) || {}; }catch(_){ return {}; }
+    }
+
+    copyBtn.addEventListener('click', () => {
+      const addr = depositAddressEl.textContent.trim();
+      if (!addr) return;
+      navigator.clipboard && navigator.clipboard.writeText(addr);
+      alert('Address copied to clipboard');
+    });
+
+    async function fetchAndShowAddress(currency) {
+      try {
+        const symbol = currency.toUpperCase();
+        
+        // First try to fetch from API
+        try {
+          const res = await fetch(apiBase + `/deposit/address?currency=${symbol}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.address) {
+              depositAddressEl.textContent = data.address;
+              qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data.address)}`;
+              addressBox.style.display = 'block';
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Could not fetch address from API, falling back to local', e);
+        }
+
+        // Fallback to localStorage overrides
+        const overrides = getCustomDepositAddresses();
+        const mockAddr = overrides[symbol] || MOCK_ADDRESSES[symbol] || '0xMOCKADDRESS0000000000000000000000000000';
+        depositAddressEl.textContent = mockAddr;
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(mockAddr)}`;
+        addressBox.style.display = 'block';
+      } catch (err) {
+        console.error('Address prepare error', err);
+        addressBox.style.display = 'none';
+      }
+    }
+
+    document.getElementById('deposit-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      alert('Please continue on Binance using the button above, then confirm using "I have completed deposit".');
+    });
+  </script>
+  <script src="js/theme-switcher.js"></script>
+  <script src="js/testimonies.js"></script>
+  <script src="js/scrolling-banner.js"></script>
+</body>
+</html>

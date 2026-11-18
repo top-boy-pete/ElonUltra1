@@ -1,0 +1,255 @@
+/* Header Styles */
+.site-header {
+  background: rgba(var(--card-rgb), 0.4);
+  backdrop-filter: blur(0px);
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  width: 100%;
+}
+
+.site-header.scrolled {
+  background: rgba(var(--card-rgb), 0.7);
+  backdrop-filter: blur(25px);
+}
+
+.site-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; 
+  width: 100%;
+  max-width: 100%;
+  min-height: 52px;
+  padding: 0 24px;
+}
+
+.brand {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 20px;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.brand-logo {
+  height: 42px;
+  width: 42px;
+  object-fit: contain;
+}
+
+.brand span {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  display: block;
+}
+
+.brand:hover {
+  opacity: 0.8;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex: 1;
+  margin-left: 40px;
+  justify-content: flex-end;
+}
+
+.nav a {
+  color: var(--muted);
+  margin-left: 24px;
+  text-decoration: none;
+  transition: var(--transition);
+  position: relative;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.nav a:hover {
+  color: var(--accent);
+}
+
+.nav a::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: var(--transition);
+}
+
+.nav a:hover::after {
+  width: 100%;
+}
+
+.nav-login {
+  color: var(--accent) !important;
+  border: 1px solid var(--accent);
+  padding: 6px 12px;
+  border-radius: 6px;
+  margin-left: 12px !important;
+}
+
+.nav-login:hover::after {
+  width: 0;
+}
+
+.nav-signup {
+  background: var(--accent);
+  color: white !important;
+  padding: 6px 14px;
+  border-radius: 6px;
+  margin-left: 8px !important;
+}
+
+.nav-signup:hover {
+  opacity: 0.9;
+}
+
+.nav-signup:hover::after {
+  width: 0;
+}
+
+.theme-toggle {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  margin-left: 24px;
+  font-size: 14px;
+  transition: var(--transition);
+  padding: 0;
+  font-family: inherit;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+}
+
+/* hide the mobile-only support button by default; show on small screens */
+.mobile-support {
+  display: none;
+}
+
+.mobile-auth-buttons {
+  display: none;
+  gap: 8px;
+}
+
+@media (max-width: 768px) {
+  .site-header .container {
+    flex-wrap: wrap;
+  }
+
+  .brand {
+    font-size: 14px;
+  }
+
+  .brand-logo {
+    height: 52px;
+    width: 52px;
+  }
+
+  .brand span {
+    font-size: 12px;
+  }
+
+  /* hide header nav on mobile - navigation provided by bottom nav */
+  .nav {
+    display: none !important;
+  }
+
+  /* show the mobile support icon when nav is hidden */
+  .mobile-support {
+    display: inline-flex;
+    margin-left: 8px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  /* show mobile auth buttons for non-logged-in users */
+  .mobile-auth-buttons {
+    display: flex;
+  }
+
+  .nav a {
+    margin-left: 12px;
+    font-size: 11px;
+  }
+
+  .theme-toggle {
+    margin-left: 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Make brand take available space so name can fill header */
+  .brand {
+    font-size: 16px;
+    gap: 10px;
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    align-items: center;
+    white-space: normal;
+  }
+
+  /* Slightly larger logo on mobile to balance the text */
+  .brand-logo {
+    height: 48px;
+    width: 48px;
+  }
+
+  /* Show the brand name and make it prominent */
+  .brand span {
+    display: block;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100vw - 96px);
+  }
+
+  .nav {
+    display: none !important;
+  }
+
+  .nav a {
+    margin-left: 8px;
+    font-size: 10px;
+  }
+
+  .theme-toggle {
+    margin-left: 8px;
+    font-size: 10px;
+  }
+
+  .mobile-auth-buttons {
+    gap: 6px;
+  }
+
+  .mobile-auth-buttons a {
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    margin: 0 !important;
+  }
+}

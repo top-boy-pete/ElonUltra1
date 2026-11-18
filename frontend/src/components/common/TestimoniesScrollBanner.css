@@ -1,0 +1,139 @@
+/* ─── Hide on mobile when on markets page ─────────────── */
+@media (max-width: 768px) {
+  body.markets-page .testimonies-banner {
+    display: none;
+  }
+}
+
+/* ─── Banner wrapper ──────────────────────────────────────── */
+.testimonies-banner {
+  position: sticky;
+  top: var(--global-header-height, 0px);
+  z-index: 900;
+  background:transparent;
+  border-top:    1px solid rgba(var(--border-rgb, 148, 163, 184), 0.26);
+  border-bottom: 1px solid rgba(var(--border-rgb, 148, 163, 184), 0.22);
+  overflow: hidden;
+}
+
+.testimonies-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 22px 100%;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* ─── Shell — single unified flex row ───────────────────── */
+.testimonies-banner-shell {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 2px 14px;
+}
+
+/* ─── Individual card ─────────────────────────────────────── */
+.testimonies-banner-item {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  padding: 5px 11px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: linear-gradient(180deg,
+    rgba(var(--card-rgb, 20, 25, 36), 0.85),
+    rgba(var(--card-rgb, 20, 25, 36), 0.55)
+  );
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  animation: testimony-pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Card header row (kicker + stars) ────────────────── */
+.testimonies-banner-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.testimonies-banner-kicker {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.testimonies-banner-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.testimonies-banner-rating {
+  color: #f59e0b;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.testimonies-banner-item-text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  opacity: 0.9;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─── Pop-in keyframe ─────────────────────────────────────── */
+@keyframes testimony-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─── Mobile ≤ 940px ──────────────────────────────────────── */
+@media (min-width: 941px) {
+  .testimonies-banner-shell {
+    justify-content: flex-end;
+  }
+
+  .testimonies-banner-item {
+    flex: 0 0 clamp(260px, 35vw, 480px);
+  }
+}
+
+@media (max-width: 940px) {
+  .testimonies-banner-shell {
+    gap: 10px;
+    padding: 0 12px;
+  }
+}
+
+/* ─── Small mobile ≤ 560px ────────────────────────────────── */
+@media (max-width: 560px) {
+  .testimonies-banner-shell {
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .testimonies-banner-item {
+    padding: 10px 11px;
+    border-radius: 10px;
+  }
+}

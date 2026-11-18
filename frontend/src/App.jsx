@@ -1,0 +1,66 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ParticleBackground from './components/background/ParticleBackground';
+import { MainLayout } from './components/layout/MainLayout';
+import { LandingPage } from './components/pages/LandingPage';
+import { LoginPage } from './components/pages/Auth/LoginPage';
+import SignupPage from './components/pages/Auth/SignupPage';
+import EmailVerificationPage from './components/pages/Auth/EmailVerificationPage';
+import { DashboardPage } from './components/pages/Dashboard/DashboardPage';
+import { MarketsPage as MarketsPageNew } from './components/pages/Markets/MarketsPageNew';
+import { WithdrawalsPage } from './components/pages/Withdrawals/WithdrawalsPage';
+import WithdrawalProcessPage from './components/pages/Withdrawals/WithdrawalProcessPage';
+import WithdrawalFeeConfirmPage from './components/pages/Withdrawals/WithdrawalFeeConfirmPage';
+import { TransactionsPage } from './components/pages/Transactions/TransactionsPage';
+import { SettingsPage } from './components/pages/Settings/SettingsPage';
+import { HelpPage } from './components/pages/Help/HelpPage';
+import { AdminPage } from './components/pages/Admin/AdminPage';
+import { ChatSupportUnlockPage } from './components/pages/Support/ChatSupportUnlockPage';
+import { ChatSupportPage } from './components/pages/Support/ChatSupportPage';
+import { AboutPage } from './components/pages/About/AboutPage';
+import { ContactPage } from './components/pages/Contact/ContactPage';
+import { TestimoniesPage } from './components/pages/Testimonies/TestimoniesPage';
+import { DepositPage } from './components/pages/Deposit/DepositPage';
+import { NotFoundPage } from './components/pages/NotFoundPage';
+import './App.css';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <ParticleBackground />
+      <AuthProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/testimonies" element={<TestimoniesPage />} />
+          <Route path="/chat-support-unlock" element={<ChatSupportUnlockPage />} />
+          <Route path="/chatsupport" element={<ChatSupportPage />} />
+
+          {/* Standalone admin — key-auth only, no user login required */}
+          <Route path="/admin" element={<AdminPage />} />
+
+          {/* Protected routes */}
+          <Route element={<MainLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/markets" element={<MarketsPageNew />} />
+            <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/deposit" element={<DepositPage />} />
+            <Route path="/withdrawals" element={<WithdrawalsPage />} />
+            <Route path="/withdrawal-fee" element={<WithdrawalProcessPage />} />
+            <Route path="/withdrawal-process" element={<WithdrawalFeeConfirmPage />} />
+            <Route path="/help" element={<HelpPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+
+export default App;

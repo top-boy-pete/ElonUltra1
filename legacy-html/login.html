@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Login — ELON-ULTRA</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container" style="display:flex;justify-content:space-between;align-items:center">
+      <a href="landing.html" class="brand"><img src="images/elon-logo-v2.svg" alt="EUE"><span style="display:block">ELON-ULTRA</span></a>
+      <button class="theme-toggle" style="margin:0">☀️ Light Mode</button>
+    </div>
+  </header>
+
+  <main class="container" style="max-width:600px;margin:80px auto;padding:24px;text-align:center">
+    <!-- Testimonies Scrolling Banner -->
+    <!-- <div id="testimonies-banner" class="testimonies-banner"></div> -->
+
+    <h1>Sign In to ELON-ULTRA</h1>
+    <p class="muted">Access your trading account and manage your portfolio</p>
+    <form id="login-form" class="form">
+      <label><span>Email Address</span>
+        <input type="email" name="email" placeholder="your@email.com" required>
+      </label>
+      <label><span>Password</span>
+        <div style="position:relative;display:flex;align-items:center">
+          <input type="password" name="password" id="password-input" placeholder="••••••••" required>
+          <button type="button" id="toggle-password" style="position:absolute;right:12px;background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px;font-size:18px">👁️</button>
+        </div>
+      </label>
+      <button type="submit" class="btn" style="width:100%">Sign In</button>
+    </form>
+    <p class="muted">Don't have an account? <a href="signup.html" style="color:var(--accent)">Sign up here</a></p>
+    <p class="muted"><a href="#" style="color:var(--accent)">Forgot password?</a></p>
+
+  <footer class="site-footer">
+    <div class="container">&copy; 2025 ELON-ULTRA — Professional Crypto Trading</div>
+  </footer>
+
+  <script src="js/auth.js"></script>
+  <script src="js/testimonies.js"></script>
+  <script src="js/scrolling-banner.js"></script>
+  <script src="js/animations.js"></script>
+  <script>
+    (function enforceFreshLogin(){
+      try {
+        if (window.AuthService && typeof AuthService.logout === 'function') {
+          AuthService.logout();
+        } else {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('token');
+        }
+      } catch (err) {
+        console.warn('Could not reset auth state on login page', err);
+      }
+    })();
+
+    // Password visibility toggle
+    document.getElementById('toggle-password')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const input = document.getElementById('password-input');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const { email, password } = Object.fromEntries(new FormData(e.target));
+
+      try {
+        await AuthService.login(email, password);
+        window.location.href = '/dashboard.html';
+      } catch (err) {
+        alert('Login failed: ' + err.message);
+      }
+    });
+
+  </script>
+  <script src="js/theme-switcher.js"></script>
+</body>
+</html>

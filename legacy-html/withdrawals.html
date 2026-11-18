@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Withdrawal — ELON-ULTRA</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <style>
+      .withdrawal-container {
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .user-info-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      .testimonies-banner { width: 100%; padding: 8px 12px; position: relative; min-height: 36px; display: flex; align-items: center; margin-bottom: 16px; box-sizing: border-box; overflow: hidden; }
+      .testimonies-banner-content { display: flex; gap: 24px; width: max-content; align-items: center; will-change: transform; }
+      .testimonies-banner-item { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; padding: 12px 18px; background: rgba(251, 191, 36, 0.2); border-radius: 6px; backdrop-filter: blur(8px); font-size: 13px; color: #e0e7ff; border: 1.5px solid rgba(251, 191, 36, 0.6); min-width: 280px; max-width: 380px; }
+      .testimonies-banner-item strong { color: #fbbf24; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .testimonies-banner-item-text { font-style: italic; line-height: 1.3; font-size: 12px; color: #cbd5e1; }
+      @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+      @media (max-width: 768px) { .testimonies-banner { padding: 6px 8px; min-height: 32px; margin-bottom: 12px; } .testimonies-banner-content { gap: 18px; } .testimonies-banner-item { padding: 10px 14px; font-size: 12px; min-width: 240px; max-width: 300px; border-radius: 5px; } .testimonies-banner-item strong { font-size: 11px; } .testimonies-banner-item-text { font-size: 11px; } }
+      .user-info-card h3 {
+        margin: 0 0 12px 0;
+        font-size: 14px;
+        color: var(--muted);
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      .user-field {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .user-field:last-child {
+        border-bottom: none;
+      }
+      .user-label {
+        font-weight: 500;
+        color: var(--text);
+      }
+      .user-value {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .form-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+      }
+      .form-section h2 {
+        margin: 0 0 20px 0;
+        font-size: 18px;
+      }
+      .progress-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        padding: 20px;
+        border-radius: 8px;
+        display: none;
+      }
+      .progress-section.active {
+        display: block;
+      }
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 16px;
+      }
+      .progress-fill {
+        height: 100%;
+        background: var(--accent);
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+      .progress-text {
+        text-align: center;
+        font-weight: 500;
+        margin-bottom: 16px;
+        color: var(--text);
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-top: 8px;
+      }
+      .status-pending {
+        background: #fef3c7;
+        color: #b45309;
+      }
+      .status-processing {
+        background: #bfdbfe;
+        color: #1e40af;
+      }
+      .status-completed {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .status-failed {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .withdrawal-details {
+        margin-top: 16px;
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 6px;
+        font-size: 13px;
+      }
+      .withdrawal-details-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+      }
+      .error-message {
+        color: var(--danger);
+        padding: 12px;
+        background: #fef2f2;
+        border-left: 4px solid var(--danger);
+        border-radius: 4px;
+        margin-bottom: 16px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="landing.html" class="brand"><img src="images/elon-logo-v2.svg" alt="EUE" /><span style="display:block">ELON-ULTRA</span></a>
+        <nav class="nav">
+          <a href="dashboard.html">Dashboard</a>
+          <a href="withdrawals.html" class="active">Withdrawals</a>
+          <a href="settings.html">Account</a>
+          <button class="theme-toggle" style="margin:0 12px">☀️ Light Mode</button>
+          <a href="#" onclick="logout()">Logout</a>
+        </nav>
+      </div>
+    </header>
+
+    <div class="withdrawal-container">
+      <div id="testimonies-banner" class="testimonies-banner"></div>
+      <h1>Withdraw Crypto</h1>
+
+      <!-- Customer Information -->
+      <div class="user-info-card">
+        <h3>Your Account Information</h3>
+        <div class="user-field">
+          <span class="user-label">Name</span>
+          <span class="user-value" id="user-name">Loading...</span>
+        </div>
+        <div class="user-field">
+          <span class="user-label">Email</span>
+          <span class="user-value" id="user-email">Loading...</span>
+        </div>
+        <div class="user-field">
+          <span class="user-label">Account Status</span>
+          <span class="user-value" id="user-status">Verified</span>
+        </div>
+        <div class="user-field">
+          <span class="user-label">Available Balance</span>
+          <span class="user-value" id="user-balance">$0.00</span>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <div class="error-message" id="error-message"></div>
+
+      <!-- Withdrawal Form -->
+      <div class="form-section" id="form-section">
+        <h2>Request Withdrawal</h2>
+        <form id="withdrawal-form">
+          <label>
+            <span>Cryptocurrency</span>
+            <select name="crypto_type" required>
+              <option value="">Select a crypto</option>
+              <option value="BTC">Bitcoin (BTC)</option>
+              <option value="ETH">Ethereum (ETH)</option>
+              <option value="USDT">Tether (USDT)</option>
+              <option value="USDC">USD Coin (USDC)</option>
+              <option value="XRP">Ripple (XRP)</option>
+              <option value="ADA">Cardano (ADA)</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Amount</span>
+            <input type="number" name="amount" id="amount-input" placeholder="0.00" step="0.00000001" min="0" required />
+          </label>
+
+          <div style="background:#f9fafb;padding:12px;border-radius:6px;margin-bottom:16px;font-size:14px;display:none" id="fee-calc">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span>Withdrawal Amount:</span>
+              <span style="font-weight:600" id="calc-amount">$0.00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+              <span>Fee (30%):</span>
+              <span style="font-weight:600;color:var(--danger)" id="calc-fee">$0.00</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:6px">
+              <span style="font-weight:600">Total Deducted:</span>
+              <span style="font-weight:600;color:var(--accent)" id="calc-total">$0.00</span>
+            </div>
+          </div>
+
+          <label>
+            <span>Wallet Address</span>
+            <input
+              type="text"
+              name="crypto_address"
+              placeholder="Enter your wallet address"
+              maxlength="255"
+              required
+            />
+          </label>
+
+          <div class="btn-group">
+            <button type="submit" class="btn">Request Withdrawal</button>
+            <button type="reset" class="btn-secondary">Clear</button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+
+    <footer class="site-footer">
+      <div class="container">&copy; 2025 ELON-ULTRA — Professional Crypto Trading</div>
+    </footer>
+
+    <script src="/js/auth.js"></script>
+    <script>
+      // *** CRITICAL: Protect withdrawals page from unauthorized access ***
+      (function() {
+        if (!AuthService.isAuthenticated()) {
+          console.warn('Withdrawals access denied: User not authenticated');
+          window.location.href = '/login.html';
+          return;
+        }
+        if (!AuthService.validateTokenExpiry()) {
+          console.warn('Withdrawals access denied: Token expired');
+          window.location.href = '/login.html';
+          return;
+        }
+        AuthService.startTokenValidation();
+        console.log('Withdrawals authentication check passed');
+      })();
+
+      // Use explicit API base when developing locally
+      const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+        ? `http://${location.hostname}:5001/api`
+        : '/api';
+
+      const TOKEN = (window.AuthService && typeof AuthService.getToken === 'function')
+        ? AuthService.getToken()
+        : (localStorage.getItem('authToken') || localStorage.getItem('token'));
+
+      function formatUSD(n){
+        return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(n)||0);
+      }
+
+      // Fetch and display user information
+      async function loadUserInfo(forceRefresh = false) {
+        try {
+          let profile = null;
+          if (!forceRefresh && window.AuthService && typeof AuthService.getUser === 'function') {
+            profile = AuthService.getUser();
+          }
+          if (!profile) {
+            const response = await fetch(`${API_BASE}/auth/me`, {
+              headers: { Authorization: `Bearer ${TOKEN}` },
+            });
+            if (!response.ok) {
+              const text = await response.text().catch(()=>response.statusText);
+              throw new Error(text || 'Failed to load user info');
+            }
+            const data = await response.json();
+            profile = data.user;
+            if (window.AuthService && typeof AuthService.setUser === 'function') {
+              AuthService.setUser(profile);
+            }
+          }
+          document.getElementById('user-name').textContent = profile?.name || profile?.email || 'N/A';
+          document.getElementById('user-email').textContent = profile?.email || '—';
+          
+          // Get balance from server profile (preferred) or localStorage (fallback)
+          const serverBalance = typeof profile?.balance === 'number' ? profile.balance : null;
+          const localBalance = parseFloat(localStorage.getItem('availableBalance') || localStorage.getItem('balance') || '0');
+          const effectiveBalance = serverBalance != null ? serverBalance : localBalance;
+          
+          document.getElementById('user-balance').textContent = formatUSD(effectiveBalance);
+        } catch (err) {
+          console.error(err);
+          showError('Failed to load user information');
+        }
+      }
+
+      // Handle withdrawal form submission -> redirect to fee step
+      document.getElementById('withdrawal-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData);
+        const amt = parseFloat(data.amount);
+        const fee = amt * 0.3;
+        const total = amt + fee;
+        
+        // Get current balance from page display
+        const balanceText = document.getElementById('user-balance').textContent;
+        const currentBalance = parseFloat(balanceText.replace(/[^0-9.-]/g, '')) || 0;
+        
+        if (currentBalance < total) {
+          showError(`Insufficient balance. You need $${total.toFixed(2)} (amount + 30% fee), but only have $${currentBalance.toFixed(2)}`);
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/withdrawals`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${TOKEN}`,
+            },
+            body: JSON.stringify(data),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Withdrawal request failed');
+          }
+
+          const result = await response.json();
+          const w = result.withdrawal;
+          // Update client-side balance immediately so UI reflects the withdrawal + fee without waiting for a profile refresh
+          try {
+            const snapshot = Number(w.balance_snapshot || localStorage.getItem('availableBalance') || '0');
+            const fee = Number(w.fee_amount || 0);
+            const newBalance = snapshot - Number(amt) - fee;
+            if (window.CBPortfolio && typeof window.CBPortfolio.setBalance === 'function') {
+              window.CBPortfolio.setBalance(newBalance);
+            }
+            if (window.AuthService && typeof AuthService.getUser === 'function') {
+              const u = AuthService.getUser() || {};
+              u.balance = newBalance;
+              AuthService.setUser(u);
+            }
+            // Update displayed balance on this page if present
+            const balEl = document.getElementById('user-balance');
+            if (balEl) balEl.textContent = formatUSD(newBalance);
+          } catch (e) { console.warn('Failed to update client balance after withdrawal:', e); }
+
+          // Redirect user to fee payment step
+          const params = new URLSearchParams({
+            id: w.id,
+            amount: w.amount,
+            crypto: data.crypto_type,
+            fee: w.fee_amount,
+            balance_snapshot: w.balance_snapshot ?? '',
+          });
+          window.location.href = `withdrawal-fee.html?${params.toString()}`;
+        } catch (err) {
+          console.error(err);
+          showError(err.message);
+        }
+      });
+
+      // Adjust amount step/placeholder based on crypto type selected
+      document.querySelector('select[name="crypto_type"]').addEventListener('change', (e) => {
+        const sel = e.target.value;
+        const amountInput = document.querySelector('input[name="amount"]');
+        if (sel === 'BTC' || sel === 'ETH') {
+          amountInput.step = '0.00000001';
+          amountInput.placeholder = '0.00000000';
+        } else {
+          amountInput.step = '0.01';
+          amountInput.placeholder = '0.00';
+        }
+      });
+
+      // Live fee calculation as user types amount
+      document.getElementById('amount-input').addEventListener('input', (e) => {
+        const amt = parseFloat(e.target.value) || 0;
+        const fee = amt * 0.3;
+        const total = amt + fee;
+        
+        if (amt > 0) {
+          document.getElementById('fee-calc').style.display = 'block';
+          document.getElementById('calc-amount').textContent = formatUSD(amt);
+          document.getElementById('calc-fee').textContent = formatUSD(fee);
+          document.getElementById('calc-total').textContent = formatUSD(total);
+        } else {
+          document.getElementById('fee-calc').style.display = 'none';
+        }
+      });
+
+      // Removed inline progress UI; handled on fee page / processing page
+
+      function showError(message) {
+        const errorEl = document.getElementById('error-message');
+        errorEl.textContent = message;
+        errorEl.style.display = 'block';
+        setTimeout(() => {
+          errorEl.style.display = 'none';
+        }, 5000);
+      }
+
+      function logout() {
+        if (window.AuthService && typeof AuthService.stopTokenValidation === 'function') {
+          AuthService.stopTokenValidation();
+        }
+        if (window.AuthService && typeof AuthService.logout === 'function') {
+          AuthService.logout();
+        } else {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('token');
+        }
+        window.location.href = 'login.html';
+      }
+
+      // Load user info on page load
+      loadUserInfo();
+    </script>
+    <script src="js/theme-switcher.js"></script>
+    <script src="js/testimonies.js"></script>
+    <script src="js/scrolling-banner.js"></script>
+  </body>
+</html>

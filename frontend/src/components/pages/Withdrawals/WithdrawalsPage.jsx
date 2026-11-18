@@ -1,0 +1,122 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './WithdrawalsPage.css';
+import API from '../../../services/api';
+
+const MIN_WITHDRAWAL_FEE_RATE = 0.0789;
+const MAX_WITHDRAWAL_FEE_RATE = 0.0789;
+
+export const WithdrawalsPage = () => {
+  const [crypto, setCrypto] = useState('BTC');
+  const [amount, setAmount] = useState('');
+  const [address, setAddress] = useState('');
+  const [feeRate, setFeeRate] = useState(() => MIN_WITHDRAWAL_FEE_RATE + Math.random() * (MAX_WITHDRAWAL_FEE_RATE - MIN_WITHDRAWAL_FEE_RATE));
+  const [loading, setLoading] = useState(false);
+  const [balance, setBalance] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // fetch profile to get balance
+    let mounted = true;
+    API.get('/auth/me').then(res => {
+      if (mounted && res?.data?.user) {
+        const bal = Number(res.data.user.balance ?? 0);
+        setBalance(isNaN(bal) ? 0 : bal);
+      }
+    }).catch(()=>{});
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!amount || Number(amount) <= 0) return;
+    setFeeRate(MIN_WITHDRAWAL_FEE_RATE + Math.random() * (MAX_WITHDRAWAL_FEE_RATE - MIN_WITHDRAWAL_FEE_RATE));
+  }, [amount]);
+
+  const amountNum = Number(amount || 0);
+  const fee = amountNum * feeRate;
+  const total = amountNum + fee;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!amount || !address) return alert('Enter amount and wallet address');
+    try {
+      setLoading(true);
+      const res = await API.post('/withdrawals', {
+        crypto_type: crypto,
+        amount: Number(amount),
+        crypto_address: address,
+        fee_rate: feeRate,
+      });
+      const withdrawalData = res.data.withdrawal || res.data;
+      // Navigate to withdrawal-fee (now contains the 4-step form) with major information needed
+      navigate('/withdrawal-fee', {
+        state: {
+          withdrawal: withdrawalData,
+          initialData: {
+            currency: crypto,
+            amount: amount,
+            address: address,
+            fee_amount: withdrawalData.fee_amount || (Number(amount) * feeRate),
+            withdrawal_id: withdrawalData.id,
+            status: withdrawalData.status
+          }
+        }
+      });
+    } catch (err) {
+      console.error(err);
+      alert(err?.response?.data?.error || err.message || 'Withdrawal failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="withdrawals-page">
+      <h1>Withdraw Crypto</h1>
+      <p className="muted">Request a withdrawal in USD — fees shown below are calculated in USD.</p>
+
+      <div className="withdraw-grid">
+        <div className="user-card">
+          <h3>Your Account</h3>
+          <div className="field"><span>Available Balance</span><strong>{balance != null ? `$${balance.toFixed(2)}` : 'Loading...'}</strong></div>
+        </div>
+
+        <form className="withdraw-form" onSubmit={handleSubmit}>
+          <label>
+            <span>Cryptocurrency</span>
+            <select value={crypto} onChange={(e)=>setCrypto(e.target.value)}>
+              <option>BTC</option>
+              <option>ETH</option>
+              <option>USDT</option>
+              <option>USDC</option>
+              <option>XRP</option>
+              <option>ADA</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Amount (USD)</span>
+            <input type="number" step="0.01" min="0" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0.00" />
+          </label>
+
+          <div className="fee-box">
+            <div>
+              <span>Withdrawal Fee ({(feeRate * 100).toFixed(3).replace(/0+$/, '').replace(/\.$/, '')}%)</span>
+              <strong>${fee.toFixed(2)}</strong>
+            </div>
+          </div>
+
+          <label>
+            <span>Wallet Address</span>
+            <input type="text" value={address} onChange={e=>setAddress(e.target.value)} placeholder="Your wallet address" />
+          </label>
+
+          <div className="actions">
+            <button className="btn" type="submit" disabled={loading}>{loading ? 'Sending…' : 'Request Withdrawal'}</button>
+            <button type="button" className="btn btn-secondary" onClick={()=>{ setAmount(''); setAddress(''); }}>Clear</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};

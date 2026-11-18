@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin — ELON-ULTRA</title>
+  <link rel="stylesheet" href="/css/styles.css?v=2.0.1">
+  <style>
+    body { overflow-x: hidden; }
+    .page-container { max-width: 1200px; margin: 0 auto; padding: 20px; width: 100%; box-sizing: border-box; }
+    .app-wrapper { display:flex; gap:24px; align-items:flex-start; width: 100%; }
+    .sidebar { width:200px; flex-shrink: 0; }
+    .main-content { flex:1; min-width:0; }
+    .cards-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+    
+    /* Critical CSS for instant testimonies display */
+    .testimonies-banner { width: 100%; padding: 8px 12px; position: relative; min-height: 36px; display: flex; align-items: center; margin-bottom: 16px; box-sizing: border-box; overflow: hidden; }
+    .testimonies-banner-content { display: flex; gap: 24px; animation: scroll-left 45s linear infinite; width: max-content; align-items: center; will-change: transform; }
+    .testimonies-banner-item { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; padding: 12px 18px; background: rgba(251, 191, 36, 0.2); border-radius: 6px; backdrop-filter: blur(8px); font-size: 13px; color: #e0e7ff; border: 1.5px solid rgba(251, 191, 36, 0.6); min-width: 280px; max-width: 380px; }
+    .testimonies-banner-item strong { color: #fbbf24; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .testimonies-banner-item-text { font-style: italic; line-height: 1.3; font-size: 12px; color: #cbd5e1; }
+    @keyframes scroll-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @media (max-width: 768px) { .testimonies-banner { padding: 6px 8px; min-height: 32px; margin-bottom: 12px; } .testimonies-banner-content { gap: 18px; } .testimonies-banner-item { padding: 10px 14px; font-size: 12px; min-width: 240px; max-width: 300px; border-radius: 5px; } .testimonies-banner-item strong { font-size: 11px; } .testimonies-banner-item-text { font-size: 11px; } }
+    
+    /* Mobile Menu Toggle */
+    .mobile-menu-toggle { display:none; background:none; border:none; font-size:24px; cursor:pointer; color:var(--text); padding:8px; }
+    .mobile-menu-toggle:hover { color:var(--accent); }
+    
+    /* Modern Testimonies Modal */
+    .testimonies-modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); z-index:1000; justify-content:center; align-items:center; padding:20px; animation:fadeIn 0.3s ease-out; overflow-y:auto; }
+    .testimonies-modal.active { display:flex; }
+    .testimonies-modal-content { background:#fff; border-radius:12px; width:90%; max-width:900px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); padding:24px; animation:slideUp 0.3s ease-out; }
+    .testimonies-modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:16px; border-bottom:2px solid #f0f0f0; }
+    .testimonies-modal-header h2 { margin:0; color:var(--text); }
+    .testimonies-modal-close { background:none; border:none; font-size:28px; cursor:pointer; color:var(--muted); padding:0; width:32px; height:32px; display:flex; align-items:center; justify-content:center; }
+    .testimonies-modal-close:hover { color:var(--text); }
+    .testimonies-grid-modal { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+    
+    /* Modern Futuristic Users Modal */
+    .users-modal { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); z-index:1000; justify-content:center; align-items:center; padding:20px; animation:fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    .users-modal.active { display:flex; }
+    .users-modal-content { background:linear-gradient(135deg, rgba(20,20,35,0.95) 0%, rgba(30,25,50,0.95) 100%); border:1px solid rgba(100,200,255,0.2); border-radius:12px; width:90%; max-width:550px; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,150,255,0.2), inset 0 1px 0 rgba(255,255,255,0.1); backdrop-filter:blur(10px); animation:slideUp 0.3s ease-out; }
+    @keyframes slideUp { from { transform:translateY(40px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+    .users-modal-header { padding:20px; border-bottom:1px solid rgba(100,200,255,0.15); display:flex; justify-content:space-between; align-items:center; background:linear-gradient(90deg, rgba(0,150,255,0.1) 0%, transparent 100%); }
+    .users-modal-header h3 { margin:0; font-size:18px; font-weight:700; background:linear-gradient(135deg, #00d4ff 0%, #0099ff 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .users-modal-close { background:none; border:none; font-size:28px; cursor:pointer; color:rgba(100,200,255,0.6); transition:all 0.2s; padding:0; width:32px; height:32px; display:flex; align-items:center; justify-content:center; }
+    .users-modal-close:hover { color:rgba(100,200,255,1); transform:rotate(90deg); }
+    .users-modal-body { overflow-y:auto; flex:1; padding:12px; background:linear-gradient(180deg, rgba(0,100,200,0.05) 0%, transparent 100%); }
+    .users-modal-body::-webkit-scrollbar { width:6px; }
+    .users-modal-body::-webkit-scrollbar-track { background:rgba(100,200,255,0.1); border-radius:10px; }
+    .users-modal-body::-webkit-scrollbar-thumb { background:linear-gradient(180deg, rgba(0,200,255,0.5), rgba(0,100,200,0.3)); border-radius:10px; }
+    .user-item { padding:14px; border:1px solid rgba(100,200,255,0.15); border-radius:8px; margin-bottom:10px; cursor:pointer; transition:all 0.25s cubic-bezier(0.4, 0, 0.2, 1); background:linear-gradient(135deg, rgba(0,50,100,0.3) 0%, rgba(20,60,120,0.2) 100%); position:relative; overflow:hidden; }
+    .user-item::before { content:''; position:absolute; top:0; left:-100%; width:100%; height:100%; background:linear-gradient(90deg, transparent, rgba(0,200,255,0.1), transparent); transition:left 0.5s; }
+    .user-item:hover::before { left:100%; }
+    .user-item:hover { border-color:rgba(100,200,255,0.4); background:linear-gradient(135deg, rgba(0,80,150,0.4) 0%, rgba(30,100,180,0.3) 100%); box-shadow:0 8px 32px rgba(0,200,255,0.15), inset 0 1px 0 rgba(255,255,255,0.05); transform:translateY(-2px); }
+    .user-item-id { font-size:11px; color:rgba(100,200,255,0.7); font-weight:700; text-transform:uppercase; letter-spacing:1px; }
+    .user-item-email { font-size:15px; font-weight:600; margin:6px 0; color:#fff; }
+    .user-item-balance { font-size:13px; color:rgba(0,255,150,0.8); font-weight:500; margin:2px 0; }
+    .user-item-actions { margin-top:10px; display:flex; gap:6px; flex-wrap:wrap; }
+    
+    /* Mobile Responsive */
+    @media (max-width:900px) { 
+      .app-wrapper{ flex-direction:column; } 
+      .sidebar{ width:100%; } 
+      .nav { display:none; }
+      .nav.active { display:flex; flex-direction:column; position:absolute; top:60px; left:0; right:0; background:#fff; border-bottom:1px solid var(--border); padding:12px 0; z-index:99; box-shadow:0 2px 8px rgba(0,0,0,0.1); }
+      .nav.active a { padding:12px 24px; margin-left:0; border-left:3px solid transparent; }
+      .nav.active a:hover { background:#f3f4f6; border-left-color:var(--accent); }
+      .mobile-menu-toggle { display:block; }
+      .cards-grid { display:grid !important; grid-template-columns:1fr; gap:12px; }
+    }
+    
+    @media (max-width:640px) {
+      .page-container { padding:12px; }
+      .testimonies-grid-modal { grid-template-columns:1fr; }
+      .testimonies-modal-content { padding:16px; }
+      .table-wrapper { font-size:12px; }
+      .table-wrapper th, .table-wrapper td { padding:6px 8px; }
+      .cards-grid { grid-template-columns:1fr !important; }
+    }
+    /* Additional mobile optimizations for admin view */
+    @media (max-width:900px) {
+      .testimonies-banner-content { animation: none !important; }
+      .testimonies-banner { padding:6px 8px; }
+      .testimonies-modal-content, .users-modal-content { width:100% !important; max-width:100% !important; border-radius:8px; padding:12px; box-sizing:border-box; }
+      .users-modal-content { max-height: 90vh; overflow-y:auto; }
+      .card button, .card .btn, .btn { width:100%; }
+      #users-list-btn, #load-users, #sim-start, #sim-pause { width:100%; }
+    }
+    @media (max-width:640px) {
+      .users-modal-content, .testimonies-modal-content { max-width:100%; width:100%; height:100vh; border-radius:0; margin:0; }
+      .testimonies-banner { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container" style="display:flex; align-items:center; justify-content:space-between;">
+      <a href="/landing.html" class="brand"><img src="/images/elon-logo-v2.svg" alt="EUE"><span style="display:block">ELON-ULTRA - ADMIN</span></a>
+      <button class="theme-toggle" style="margin:0">☀️ Light Mode</button>
+    </div>
+  </header>
+
+  <div class="page-container">
+    <div id="testimonies-banner" class="testimonies-banner">
+      <div class="testimonies-banner-content">
+        <div class="testimonies-banner-item">
+          <strong>John Smith</strong>
+          <span class="testimonies-banner-item-text">The trading service has been honest, transparent, and consistently efficient. Their support agents guided me clearly through every step.</span>
+        </div>
+        <div class="testimonies-banner-item">
+          <strong>Sarah Johnson</strong>
+          <span class="testimonies-banner-item-text">Best crypto trading platform I have used. The customer support is exceptional and the real-time market data is invaluable.</span>
+        </div>
+        <div class="testimonies-banner-item">
+          <strong>Michael Chen</strong>
+          <span class="testimonies-banner-item-text">The real-time data and low fees make this my go-to platform. Professional-grade tools at an unbeatable price point.</span>
+        </div>
+        <div class="testimonies-banner-item">
+          <strong>John Smith</strong>
+          <span class="testimonies-banner-item-text">The trading service has been honest, transparent, and consistently efficient. Their support agents guided me clearly through every step.</span>
+        </div>
+        <div class="testimonies-banner-item">
+          <strong>Sarah Johnson</strong>
+          <span class="testimonies-banner-item-text">Best crypto trading platform I have used. The customer support is exceptional and the real-time market data is invaluable.</span>
+        </div>
+        <div class="testimonies-banner-item">
+          <strong>Michael Chen</strong>
+          <span class="testimonies-banner-item-text">The real-time data and low fees make this my go-to platform. Professional-grade tools at an unbeatable price point.</span>
+        </div>
+      </div>
+    </div>
+    <div class="app-wrapper">
+
+      <main class="main-content">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h1>Admin — Broker View</h1>
+          <div style="font-size:14px;color:var(--muted);display:flex;gap:12px;align-items:center">
+            <div>Admin preview for user <span id="user-name" style="color:var(--accent);font-weight:600">User</span></div>
+            <label style="display:flex;gap:6px;align-items:center"><span class="muted">Preview:</span>
+              <select id="current-user-select" style="padding:6px;font-size:13px"><option value="">-- none --</option></select>
+            </label>
+          </div>
+        </div>
+
+        <!-- Admin Access (outside main panel) -->
+        <div class="card" style="margin-bottom:16px;padding:12px;background:var(--bg);border:1px solid var(--border)">
+          <div style="display:flex;gap:16px;align-items:flex-start">
+            <div style="flex:1;max-width:300px">
+              <label style="display:flex;flex-direction:column;gap:6px">
+                <strong>Admin Key</strong>
+                <input id="admin-key" name="admin_key" placeholder="paste x-admin-key here" style="padding:8px;border:1px solid var(--border);border-radius:4px" />
+              </label>
+              <button id="load-users" class="btn" style="width:100%;margin-top:8px">Load Users</button>
+            </div>
+            <div style="flex:1">
+              <button id="users-list-btn" class="btn" style="width:100%;padding:32px;font-size:16px;text-align:center">
+                👥 View Users<br><span style="font-size:12px;color:var(--muted)">Click to open users list</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users List Modal -->
+        <div id="users-modal" class="users-modal">
+          <div class="users-modal-content">
+            <div class="users-modal-header">
+              <h3>Select User</h3>
+              <button class="users-modal-close" onclick="document.getElementById('users-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="users-modal-body" id="users-list-container">
+              <div style="text-align:center;color:var(--muted);padding:20px">Click "Load Users" to populate list</div>
+            </div>
+          </div>
+        </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;align-items:stretch">
+            <!-- Simulator Control -->
+            <div style="padding:12px;border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column">
+              <h4 style="margin-top:0;margin-bottom:10px">⚙️ Simulator</h4>
+              <div style="font-size:13px;margin-bottom:10px">
+                <div style="margin-bottom:6px">Status: <strong id="sim-status">—</strong></div>
+                <div>Next run: <span id="sim-next" style="color:var(--muted)">—</span></div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button id="sim-start" class="btn btn-small" style="flex:1">Start</button>
+                <button id="sim-pause" class="btn btn-secondary btn-small" style="flex:1">Pause</button>
+              </div>
+            </div>
+
+            <!-- Balance Management -->
+            <div style="padding:12px;border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column">
+              <h4 style="margin-top:0;margin-bottom:10px">💰 Balance</h4>
+              <form id="credit-form" style="display:flex;flex-direction:column;gap:8px;font-size:13px;flex:1">
+                <input id="credit-user-id" type="hidden" />
+                <label style="display:flex;flex-direction:column"><span style="font-weight:600;margin-bottom:4px">Amount</span><input id="credit-amount" name="amount" type="number" step="0.01" required style="padding:6px"></label>
+                <label style="display:flex;flex-direction:column"><span style="font-weight:600;margin-bottom:4px">Currency</span>
+                  <select id="credit-currency" name="currency" style="padding:6px"><option>USD</option><option>BTC</option><option>ETH</option><option>USDT</option><option>USDC</option></select>
+                </label>
+                <label style="display:flex;flex-direction:column"><span style="font-weight:600;margin-bottom:4px">Tax ID</span><input id="credit-tax-id" name="tax_id" type="text" placeholder="Optional tax ID" style="padding:6px"></label>
+                <button type="submit" class="btn" style="font-size:12px">Credit (add)</button>
+                <button type="button" id="set-balance-btn" class="btn btn-secondary" style="font-size:12px">Set Balance</button>
+              </form>
+            </div>
+
+            <!-- Manual Trade Trigger -->
+            <div style="padding:12px;border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column">
+              <h4 style="margin-top:0;margin-bottom:10px">📈 Manual Trade</h4>
+              <div style="font-size:13px;margin-bottom:10px;color:var(--muted);flex:1">Trigger balance growth immediately for selected user</div>
+              <button id="trigger-growth-btn" class="btn" style="width:100%;font-size:12px">Trigger Growth Now</button>
+              <button id="trigger-growth-btn-all" class="btn btn-secondary" style="width:100%;margin-top:8px;font-size:12px">Trigger All Users</button>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch">
+            <!-- Portfolio Management -->
+            <div style="padding:12px;border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column">
+              <h4 style="margin-top:0;margin-bottom:12px">🏆 Portfolio</h4>
+              <form id="portfolio-form" style="display:grid;grid-template-columns:1fr;gap:10px;font-size:13px">
+                <input id="portfolio-user-id" name="portfolio_user_id" type="hidden" />
+                <button type="button" id="add-asset-btn" class="btn" style="width:100%;font-size:13px">+ Add Asset</button>
+                <div style="color:var(--muted);font-size:12px;text-align:center">Click to add or edit holdings</div>
+                <div id="portfolio-fields" style="display:grid;grid-template-columns:1fr;gap:8px;max-height:140px;overflow-y:auto;padding:8px 0"></div>
+                <button type="submit" class="btn" style="margin-top:8px;font-size:13px;width:100%">💾 Save Holdings</button>
+              </form>
+            </div>
+
+            <!-- Danger Zone -->
+            <div style="padding:12px;border:1px solid var(--border);border-radius:6px;border-color:#f87171;background:rgba(239,68,68,0.05);display:flex;flex-direction:column">
+              <h4 style="margin-top:0;margin-bottom:10px;color:#dc2626">⚠️ Danger Zone</h4>
+              <div style="font-size:13px;margin-bottom:10px;color:var(--muted)">Delete all trades for all users (silent operation)</div>
+              <button type="button" class="btn" style="width:100%;font-size:12px;background:#dc2626;color:white;border:none" onclick="clearAllTrades()">🗑️ Clear All Trades</button>
+              <button type="button" id="reset-user-btn" class="btn btn-secondary" style="width:100%;margin-top:8px;font-size:12px">Reset User Data</button>
+            </div>
+          </div>
+
+          <!-- Send Prompt to Users -->
+          <div style="padding:12px;border:1px solid var(--border);border-radius:6px;margin-top:16px;margin-bottom:16px">
+            <h4 style="margin-top:0;margin-bottom:10px">📢 Send Prompt to Users</h4>
+            <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+              <label style="display:flex;flex-direction:column">
+                <strong style="margin-bottom:4px">Message</strong>
+                <textarea id="prompt-message" placeholder="Message to appear as a prompt to users" style="min-height:80px;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit"></textarea>
+              </label>
+              <label style="display:flex;flex-direction:column">
+                <strong style="margin-bottom:4px">Target User IDs</strong>
+                <input id="prompt-user-ids" placeholder="Leave blank for broadcast, or enter comma-separated IDs (e.g., 1,2,5)" style="padding:8px;border:1px solid var(--border);border-radius:4px" />
+              </label>
+              <button id="send-prompt-btn" type="button" class="btn" style="width:100%;font-size:13px">Send Prompt</button>
+            </div>
+          </div>
+
+          <!-- Manage Active Prompts -->
+          <div style="padding:12px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px">
+            <h4 style="margin-top:0;margin-bottom:10px">🛑 Active Prompts</h4>
+            <div style="font-size:13px;margin-bottom:12px;color:var(--muted)">Click "Disable" to stop a prompt from showing to users</div>
+            <div id="active-prompts-list" style="display:flex;flex-direction:column;gap:8px;max-height:200px;overflow-y:auto">
+              <div style="text-align:center;color:var(--muted);padding:12px">No active prompts</div>
+            </div>
+            <button id="refresh-prompts-btn" type="button" class="btn btn-secondary" style="width:100%;margin-top:12px;font-size:12px">Refresh Prompts</button>
+          </div>
+
+        <div class="card" style="margin-bottom:16px;padding:16px">
+          <h3 style="margin-top:0">Deposit Addresses</h3>
+          <p class="muted" style="margin-bottom:12px">Customize the wallet addresses shown on the deposit page.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+            <label><span>BTC</span><input data-deposit-symbol="BTC" id="deposit-address-BTC" name="deposit_address[BTC]" placeholder="bc1..." /></label>
+            <label><span>ETH</span><input data-deposit-symbol="ETH" id="deposit-address-ETH" name="deposit_address[ETH]" placeholder="0x..." /></label>
+            <label><span>USDT</span><input data-deposit-symbol="USDT" id="deposit-address-USDT" name="deposit_address[USDT]" placeholder="T..." /></label>
+            <label><span>USDC</span><input data-deposit-symbol="USDC" id="deposit-address-USDC" name="deposit_address[USDC]" placeholder="0x..." /></label>
+          </div>
+          <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+            <button id="save-deposit-addresses" class="btn">Save Addresses</button>
+            <button type="button" id="reset-deposit-addresses" class="btn btn-secondary">Reset to defaults</button>
+          </div>
+        </div>
+
+        <!-- Portfolio Summary Cards -->
+        <div class="cards-grid">
+          <div class="card">
+            <div class="card-title">Total Portfolio Value</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="card-value" id="total-value">$0.00</div>
+              <button id="edit-total-btn" class="btn btn-small">Edit</button>
+            </div>
+            <div class="card-change positive" id="portfolio-change">+$0.00 (+0%)</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">24h Change</div>
+            <div class="card-value" id="change-24h">+$0.00</div>
+            <div class="card-change positive" id="change-percent">+0%</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Available Balance</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="card-value" id="available-balance">$0.00</div>
+              <button id="edit-balance-btn" class="btn btn-small">Edit</button>
+            </div>
+            <div class="muted" style="margin-top:8px">Ready to invest</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Active Positions</div>
+            <div class="card-value" id="active-positions">0</div>
+            <div class="muted" style="margin-top:8px">Holdings</div>
+          </div>
+        </div>
+
+        <!-- Portfolio Holdings Table -->
+        <div class="table-wrapper">
+          <div class="table-header">
+            <h3>User Holdings</h3>
+          </div>
+          <table id="holdings-table">
+            <thead>
+              <tr>
+                  <th>Asset</th>
+                  <th>Amount</th>
+                  <th>Price</th>
+                  <th>Value</th>
+                  <th>% of Portfolio</th>
+                  <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="holdings-body">
+              <tr>
+                <td colspan="6" style="text-align:center;color:var(--muted)">No holdings yet. Select a user.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Recent Trades Table -->
+        <div class="table-wrapper">
+          <div class="table-header">
+            <h3>Recent Trades</h3>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Asset</th>
+                <th>Amount</th>
+                <th>Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="recent-trades-user">
+              <tr>
+                <td colspan="6" style="text-align:center;color:var(--muted)">Select a user to view recent trades.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Transaction Management Tabs (Editable Admin View) -->
+        <div style="margin-top:32px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2>Transaction Management</h2>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onclick="refreshAllTransactions()" class="btn btn-secondary">Refresh All</button>
+              <button onclick="clearAllTrades()" class="btn btn-danger" style="font-size:12px">🗑️ Clear All Trades</button>
+            </div>
+          </div>
+          
+          <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab(event, 'deposits-admin')">Deposits</button>
+            <button class="tab-btn" onclick="switchTab(event, 'withdrawals-admin')">Withdrawals</button>
+            <button class="tab-btn" onclick="switchTab(event, 'growth-trades-admin')">Growth Trades</button>
+            <button class="tab-btn" onclick="switchTab(event, 'all-transactions')">All Transactions</button>
+          </div>
+
+          <div id="deposits-admin" class="tab-content active">
+            <div class="table-wrapper">
+              <div class="table-header">
+                <h3>Deposit History</h3>
+                <div style="display:flex;gap:8px">
+                  <button onclick="loadDeposits()" class="btn btn-small">Refresh</button>
+                  <button onclick="addNewTransaction('deposit')" class="btn">+ Add Deposit</button>
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>User</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>TxID</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="deposits-admin-tbody">
+                  <tr><td colspan="7" style="text-align:center;color:var(--muted)">No deposits yet</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="withdrawals-admin" class="tab-content">
+            <div class="table-wrapper">
+              <div class="table-header">
+                <h3>Withdrawal History</h3>
+                <div style="display:flex;gap:8px">
+                  <button onclick="loadWithdrawals()" class="btn btn-small">Refresh</button>
+                  <button onclick="addNewTransaction('withdrawal')" class="btn">+ Add Withdrawal</button>
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>User</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Fee Status</th>
+                    <th>TxID</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="withdrawals-admin-tbody">
+                  <tr><td colspan="8" style="text-align:center;color:var(--muted)">Click Refresh to load withdrawals</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="growth-trades-admin" class="tab-content">
+            <div class="table-wrapper">
+              <div class="table-header">
+                <h3>Balance Growth Trades</h3>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                  <button onclick="loadGrowthTrades()" class="btn btn-small">Refresh</button>
+                  <button onclick="triggerGrowthNow()" class="btn btn-small">Trigger Growth Now</button>
+                </div>
+              </div>
+              <div id="growth-stats" style="margin-bottom:16px;padding:12px;background:var(--bg-secondary);border-radius:6px">
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+                  <div>
+                    <div style="color:var(--muted);font-size:12px">Total Growth Trades</div>
+                    <div style="font-size:18px;font-weight:600" id="growth-total-trades">—</div>
+                  </div>
+                  <div>
+                    <div style="color:var(--muted);font-size:12px">Total Volume</div>
+                    <div style="font-size:18px;font-weight:600" id="growth-total-volume">—</div>
+                  </div>
+                  <div>
+                    <div style="color:var(--muted);font-size:12px">Avg Boost per Trade</div>
+                    <div style="font-size:18px;font-weight:600;color:var(--success)" id="growth-avg-boost">—</div>
+                  </div>
+                  <div>
+                    <div style="color:var(--muted);font-size:12px">Peak Balance</div>
+                    <div style="font-size:18px;font-weight:600" id="growth-peak-balance">—</div>
+                  </div>
+                </div>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Asset</th>
+                    <th>Amount</th>
+                    <th>Price</th>
+                    <th>Total</th>
+                    <th>Balance Before</th>
+                    <th>Balance After</th>
+                    <th>Boost %</th>
+                  </tr>
+                </thead>
+                <tbody id="growth-trades-tbody">
+                  <tr><td colspan="9" style="text-align:center;color:var(--muted)">Select a user to view growth trades</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="all-transactions" class="tab-content">
+            <div class="table-wrapper">
+              <div class="table-header">
+                <h3>All Transactions</h3>
+                <button onclick="addNewTransaction('deposit')" class="btn">+ Add Transaction</button>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>User</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="all-transactions-tbody">
+                  <tr><td colspan="7" style="text-align:center;color:var(--muted)">No transactions yet</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Overview Section -->
+        <div style="margin-top:32px">
+          <h2>Market Overview</h2>
+          <div class="table-wrapper">
+            <div class="table-header">
+              <h3>Live Prices</h3>
+            </div>
+            <table id="market-table">
+              <thead>
+                <tr>
+                  <th>Asset</th>
+                  <th>Price</th>
+                  <th>24h Change</th>
+                  <th>Volume</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="market-body">
+                <tr>
+                  <td colspan="5" style="text-align:center;color:var(--muted)">Loading market data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Testimonies Management -->
+        <div class="card" style="margin-top:24px;padding:16px">
+          <h3 style="margin-top:0">Manage Testimonies</h3>
+          
+          <div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap">
+            <button onclick="showTestimonyForm()" class="btn">+ Add Testimony</button>
+            <button onclick="loadAllTestimonies()" class="btn btn-secondary">Refresh List</button>
+            <button onclick="openTestimoniesModal()" class="btn btn-secondary">👁️ View All</button>
+          </div>
+
+          <!-- Add/Edit Testimony Form -->
+          <form id="testimony-form" style="display:none;gap:12px;margin-bottom:16px;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--card-bg)">
+            <input id="testimony-id" type="hidden" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <label><span>Client Name *</span><input id="testimony-name" name="client_name" placeholder="John Doe" required></label>
+              <label><span>Title/Position</span><input id="testimony-title" name="title" placeholder="CEO, Tech Company"></label>
+              <label><span>Image URL</span><input id="testimony-image" name="client_image" placeholder="https://...jpg" type="url"></label>
+              <label><span>Rating (1-5)</span><select id="testimony-rating" name="rating"><option value="5">5 ⭐</option><option value="4">4 ⭐</option><option value="3">3 ⭐</option><option value="2">2 ⭐</option><option value="1">1 ⭐</option></select></label>
+            </div>
+            <label style="width:100%"><span>Testimony Content *</span><textarea id="testimony-content" name="content" placeholder="What was your experience with our platform?" style="width:100%;min-height:100px;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit" required></textarea></label>
+            <label style="display:flex;align-items:center;gap:8px"><input id="testimony-featured" name="is_featured" type="checkbox"><span>Feature this testimony on landing page</span></label>
+            <div style="display:flex;gap:8px">
+              <button type="submit" class="btn">Save Testimony</button>
+              <button type="button" onclick="cancelTestimonyForm()" class="btn btn-secondary">Cancel</button>
+            </div>
+          </form>
+
+          <!-- On Desktop: Show grid (limited) -->
+          <div id="testimonies-list" style="display:none" class="testimonies-desktop-only"></div>
+          
+          <!-- Mobile: Show button instead -->
+          <div class="testimonies-mobile-view">
+            <button onclick="loadAllTestimonies(); openTestimoniesModal()" class="btn" style="width:100%">👁️ View Testimonies ({count})</button>
+          </div>
+          
+          <style>
+            @media (min-width:901px) {
+              #testimonies-list { display:grid !important; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; max-height:400px; overflow:hidden; }
+              .testimonies-mobile-view { display:none; }
+            }
+            @media (max-width:900px) {
+              #testimonies-list { display:none !important; }
+              .testimonies-mobile-view { display:block; }
+            }
+          </style>
+        </div>
+
+        <!-- Testimonies Modal -->
+        <div id="testimonies-modal" class="testimonies-modal">
+          <div class="testimonies-modal-content">
+            <div class="testimonies-modal-header">
+              <h2>All Testimonies</h2>
+              <button class="testimonies-modal-close" onclick="document.getElementById('testimonies-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div id="testimonies-modal-list" class="testimonies-grid-modal"></div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container">Admin Console</div>
+  </footer>
+
+  <script src="/js/portfolio.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/animations.js"></script>
+  <script src="/js/markets.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script src="/js/main.js"></script>
+
+  <!-- Force admin tools to use the Express API on port 5001 in local dev -->
+  <script>
+    (function() {
+      var host = (typeof location !== 'undefined' && location.hostname) || 'localhost';
+      var isLocal = host === 'localhost' || host === '127.0.0.1';
+      if (!window.__apiBase) {
+        // On localhost: full URL with :5001 AND /api
+        // On Render: just the origin with /api (https://domain.com/api)
+        window.__apiBase = isLocal ? 'http://localhost:5001/api' : location.origin + '/api';
+      }
+    })();
+  </script>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/testimonies.js"></script>
+  <script src="/js/admin-testimonies.js"></script>
+  <script src="/js/admin-transactions.js"></script>
+  <script src="/js/admin.js"></script>
+  
+  <!-- Mobile Navigation & Testimonies Modal -->
+  <script>
+    // Toggle mobile nav
+    function toggleMobileNav() {
+      const nav = document.getElementById('mobile-nav');
+      nav.classList.toggle('active');
+    }
+    
+    // Close mobile nav when clicking a link
+    document.querySelectorAll('#mobile-nav a').forEach(link => {
+      link.addEventListener('click', () => {
+        document.getElementById('mobile-nav').classList.remove('active');
+      });
+    });
+    
+    // Open testimonies modal
+    function openTestimoniesModal() {
+      const modal = document.getElementById('testimonies-modal');
+      const list = document.getElementById('testimonies-list');
+      const modalList = document.getElementById('testimonies-modal-list');
+      
+      // Clone the testimonies from the main list
+      modalList.innerHTML = list.innerHTML;
+      modal.classList.add('active');
+    }
+    
+    // Close testimonies modal when clicking outside
+    document.getElementById('testimonies-modal')?.addEventListener('click', (e) => {
+      if (e.target.id === 'testimonies-modal') {
+        document.getElementById('testimonies-modal').classList.remove('active');
+      }
+    });
+  </script>
+  <script>
+    (async () => {
+      try {
+        if (typeof AuthService !== 'undefined' && AuthService && AuthService.isAuthenticated()) {
+          const user = await AuthService.fetchUserProfile();
+          document.getElementById('user-name').textContent = user.name || user.email;
+        } else {
+          document.getElementById('user-name').textContent = 'Not logged in';
+        }
+      } catch (err) { console.warn('Admin init warning', err); }
+    })();
+
+    // Helper function for tab switching
+    function switchTab(evt, tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      evt.target.classList.add('active');
+      const tab = document.getElementById(tabId);
+      if(tab) tab.classList.add('active');
+
+      // Load data for specific tabs
+      if (tabId === 'deposits-admin') {
+        if (typeof window.ADMIN_TX !== 'undefined' && typeof window.ADMIN_TX.fetchTransactions === 'function') {
+          const selectedUserId = document.getElementById('current-user-select')?.value;
+          window.ADMIN_TX.fetchTransactions(selectedUserId || null);
+        }
+      } else if (tabId === 'withdrawals-admin') {
+        if (typeof loadWithdrawals === 'function') {
+          loadWithdrawals();
+        }
+      } else if (tabId === 'growth-trades-admin') {
+        if (typeof loadGrowthTrades === 'function') {
+          loadGrowthTrades();
+        }
+      } else if (tabId === 'all-transactions') {
+        if (typeof window.ADMIN_TX !== 'undefined' && typeof window.ADMIN_TX.fetchTransactions === 'function') {
+          const selectedUserId = document.getElementById('current-user-select')?.value;
+          window.ADMIN_TX.fetchTransactions(selectedUserId || null);
+        }
+      }
+    }
+
+    // Transaction management functions
+    function refreshAllTransactions() {
+      if (window.ADMIN_TX && typeof window.ADMIN_TX.fetchTransactions === 'function') {
+        const selectedUserId = document.getElementById('current-user-select')?.value;
+        window.ADMIN_TX.fetchTransactions(selectedUserId || null);
+      } else {
+        console.log('Refresh transactions: function not available yet');
+      }
+    }
+
+    function addNewTransaction(type) {
+      if (typeof openTxForm === 'function') {
+        openTxForm(null, type);
+      } else {
+        alert('Add transaction: function not available yet.');
+      }
+    }
+
+    function editTransaction(txId) {
+      if (typeof openTxForm === 'function') {
+        openTxForm(txId);
+      }
+    }
+
+    function deleteTransaction(txId) {
+      if (!confirm('Delete this transaction?')) return;
+      const key = sessionStorage.getItem('adminKey');
+      if (!key) return alert('Admin key required');
+      
+      const apiBase = window.__apiBase || (location.hostname === 'localhost' ? 'http://localhost:5001/api' : '/api');
+      fetch(`${apiBase}/admin/transactions/${txId}`, {
+        method: 'DELETE',
+        headers: {'x-admin-key': key}
+      })
+      .then(r => r.ok ? Promise.resolve() : Promise.reject())
+      .then(() => {
+        alert('Transaction deleted');
+        refreshAllTransactions();
+      })
+      .catch(() => alert('Unable to delete transaction'));
+    }
+
+    function approveTransaction(txId, type) {
+      const key = sessionStorage.getItem('adminKey');
+      if (!key) return alert('Admin key required');
+      
+      const apiBase = window.__apiBase || (location.hostname === 'localhost' ? 'http://localhost:5001/api' : '/api');
+      
+      if (type === 'deposit') {
+        // For deposits, use the approve endpoint which credits balance
+        fetch(`${apiBase}/admin/deposits/${txId}/approve`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'x-admin-key': key},
+          body: JSON.stringify({})
+        })
+        .then(r => r.ok ? Promise.resolve() : Promise.reject())
+        .then(() => {
+          alert('Deposit approved');
+          refreshAllTransactions();
+        })
+        .catch(() => alert('Unable to approve deposit'));
+      } else if (type === 'withdrawal') {
+        // For withdrawals, call the withdrawal approve endpoint (deducts balance and confirms fee)
+        fetch(`${apiBase}/admin/withdrawals/${txId}/approve`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json', 'x-admin-key': key},
+          body: JSON.stringify({})
+        })
+        .then(r => r.ok ? Promise.resolve() : Promise.reject())
+        .then(() => {
+          alert('Withdrawal approved');
+          refreshAllTransactions();
+        })
+        .catch(() => alert('Unable to approve withdrawal'));
+      } else {
+        // For other transactions, just update status
+        fetch(`${apiBase}/admin/transactions/${txId}`, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json', 'x-admin-key': key},
+          body: JSON.stringify({status: 'completed'})
+        })
+        .then(r => r.ok ? Promise.resolve() : Promise.reject())
+        .then(() => {
+          alert('Transaction approved');
+          refreshAllTransactions();
+        })
+        .catch(() => alert('Unable to approve transaction'));
+      }
+    }
+
+    // Simple prompt-based transaction editor used by add/edit buttons
+    function openTxForm(existingId, presetType) {
+      const key = sessionStorage.getItem('adminKey');
+      if (!key) {
+        alert('Admin key required');
+        return;
+      }
+
+      const userId = prompt('User ID for transaction:');
+      if (!userId) return;
+
+      const amountStr = prompt('Amount (e.g. 1000.00):');
+      const amount = parseFloat(amountStr);
+      if (!amount || isNaN(amount) || amount <= 0) {
+        alert('Invalid amount');
+        return;
+      }
+
+      const type = presetType || prompt('Type (deposit/withdrawal/trade):', 'deposit') || 'deposit';
+      const status = prompt('Status (pending/completed/failed):', 'pending') || 'pending';
+      const method = prompt('Method/asset (e.g. Bank, BTC, USDT):', 'USD') || 'USD';
+      const dateInput = prompt('Date/time (YYYY-MM-DD HH:MM, leave blank for current time):', '');
+
+      const payload = {
+        user: userId,
+        type,
+        amount,
+        status,
+        method
+      };
+
+      // Only include date if provided
+      if (dateInput && dateInput.trim()) {
+        payload.date = dateInput;
+      }
+
+      const apiBase = window.__apiBase || (location.hostname === 'localhost' ? 'http://localhost:5001/api' : '/api');
+      const url = `${apiBase}/admin/transactions`;
+
+      fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'x-admin-key': key},
+        body: JSON.stringify(payload)
+      })
+      .then(async r => {
+        if (!r.ok) {
+          let msg = 'failed to save';
+          try {
+            const body = await r.json();
+            if (body && body.error) msg = body.error;
+          } catch (_) {}
+          return Promise.reject(new Error(msg));
+        }
+        return r.json().catch(() => ({}));
+      })
+      .then(() => {
+        alert('Transaction created successfully');
+        // Refresh appropriate list based on type
+        if (presetType === 'deposit' && typeof loadAdminDeposits === 'function') {
+          loadAdminDeposits();
+        } else {
+          refreshAllTransactions();
+        }
+      })
+      .catch(err => {
+        alert('Unable to save transaction: ' + (err && err.message ? err.message : err));
+      });
+    }
+  </script>
+  <script src="js/theme-switcher.js?v=2.0.1"></script>
+  <script src="js/scrolling-banner.js?v=2.0.1"></script>
+</body>
+</html>

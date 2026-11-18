@@ -1,0 +1,621 @@
+.mobile-portfolio-carousel {
+  display: block; /* force visible for testing */
+  position: relative;
+  width: 100%;
+  height: 240px;
+  margin-bottom: 30px;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden; /* clip off-screen cards so only active card shows */
+}
+
+/* Single card - no scrolling */
+.single-card {
+  width: 100%;
+  height: 220px;
+  margin-right: 0;
+}
+
+/* each slide is positioned with horizontal stacking appearance */
+.carousel-card {
+  --blur-amount: 20px; /* customizable blur intensity */
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 220px; /* explicit card height */
+  margin-right: 12px; /* gap between slides */
+  border-radius: 16px;
+  padding: 6px;
+  background: linear-gradient(135deg, rgba(var(--card-rgb), 0.55) 0%, rgba(var(--bg-rgb), 0.55) 100%);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  overflow: visible;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none !important;
+  outline: none !important;
+  transition: all 300ms ease;
+  flex-shrink: 0; /* prevent card from shrinking in flex context */
+}
+
+/* Credit card background SVG styling */
+.carousel-card .credit-card-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.42;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 16px;
+  filter: brightness(1.15) contrast(1.1);
+}
+
+/* Animated portfolio background SVG */
+.carousel-card .portfolio-bg-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  border-radius: 16px;
+}
+
+
+
+html[data-theme="light"] .carousel-card {
+  background: linear-gradient(135deg, rgba(var(--card-rgb), 0.8) 0%, rgba(var(--bg-rgb), 0.8) 100%);
+}
+
+
+
+/* content layout */
+.carousel-card .card-content {
+  width: 100%;
+  color: var(--text);
+  overflow: visible;
+}
+
+.carousel-card .card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.card-title {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.card-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: 0.2px;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.stat-value.positive { color: var(--success); }
+.stat-value.negative { color: var(--danger); }
+
+/* Card 1: Balance + 24h (legacy styles kept) */
+.card-balance-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  height: 100%;
+  padding: 8px 0;
+}
+
+/* Modern metallic first-card styling */
+.card-balance-modern {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  height: 100%;
+  padding: 18px 12px;
+}
+
+.card-balance-modern .balance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.card-balance-modern .balance-label {
+  font-size: 11px;
+  color: rgba(var(--text-rgb), 0.55);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.balance-amount {
+  font-size: clamp(26px, 10vw, 56px);
+  font-weight: 900;
+  line-height: 1;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Metallic gradient text */
+.metallic {
+  background: linear-gradient(135deg, #f9fafb 0%, #cbd5e1 35%, #94a3b8 65%, #6b7280 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 6px 18px rgba(107,114,128,0.12);
+}
+
+/* Light theme override for metallic - teal metallic effect */
+html[data-theme="light"] .metallic {
+  background: linear-gradient(135deg, #4a97b0 0%, #1f7a8c 50%, #0d4a5a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 2px 8px rgba(31, 122, 140, 0.2);
+}
+
+/* Bold metallic change badge */
+.change-badge.metallic {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.6px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 6px 18px rgba(99,102,241,0.06), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.change-badge.metallic.positive { color: #10b981; border-color: rgba(16,185,129,0.12); box-shadow: 0 6px 18px rgba(16,185,129,0.06); }
+.change-badge.metallic.negative { color: #ef4444; border-color: rgba(239,68,68,0.12); box-shadow: 0 6px 18px rgba(239,68,68,0.06); }
+
+.change-badge .change-arrow { font-size: 12px; transform: translateY(-1px); }
+.change-badge .change-text { font-weight: 900; font-size: 16px; }
+.change-badge .change-label { font-size: 10px; color: rgba(var(--text-rgb), 0.55); margin-left: 6px; }
+
+.change-section {
+  text-align: center;
+  animation: slideUp 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 200ms both;
+}
+
+.change-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 4px;
+  backdrop-filter: blur(8px);
+  background: rgba(var(--card-rgb), 0.05);
+}
+
+.change-badge.positive {
+  color: var(--success);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.change-badge.negative {
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.change-arrow {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.change-label {
+  font-size: 10px;
+  color: rgba(var(--text-rgb), 0.5);
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Card 2: Portfolio Value + Positions */
+.card-portfolio-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 100%;
+  padding: 16px 8px;
+}
+
+.portfolio-stat {
+  text-align: center;
+  flex: 1;
+  animation: scaleIn 600ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.portfolio-stat.portfolio-main {
+  animation-delay: 80ms;
+}
+
+.portfolio-stat.portfolio-secondary {
+  animation-delay: 160ms;
+}
+
+.portfolio-icon {
+  font-size: 28px;
+  margin-bottom: 6px;
+  display: block;
+  animation: bounce 1.2s ease-in-out infinite;
+}
+
+.portfolio-stat.portfolio-secondary .portfolio-icon {
+  animation-delay: 0.2s;
+}
+
+.portfolio-label {
+  font-size: 10px;
+  color: rgba(var(--text-rgb), 0.55);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.portfolio-divider {
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, transparent, rgba(var(--accent-rgb), 0.2), transparent);
+}
+
+/* Card 3: Chart */
+.card-chart-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 8px;
+  animation: fadeIn 500ms ease-in-out;
+}
+
+/* Two-column layout for second card */
+.card-portfolio-two-col {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  overflow: visible; /* keep parent visible while constraining child */
+}
+
+.portfolio-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.portfolio-right {
+  flex: 0 0 auto;
+  min-width: min(180px, 42%);
+  max-width: 55%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Allow floatings coins to show */
+  overflow: visible;
+  border-radius: 12px;
+  padding: 6px;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, rgba(var(--card-rgb), 0.02), rgba(var(--card-rgb), 0.0));
+}
+
+.composition-chart {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.composition-ring-wrap {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex-shrink: 0;
+}
+
+.composition-ring-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.14));
+}
+
+.composition-ring-track {
+  fill: none;
+  stroke: rgba(var(--text-rgb), 0.12);
+  stroke-width: 9;
+}
+
+.composition-ring-segment {
+  transition: stroke-dasharray 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.composition-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.composition-center-coin {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(var(--text-rgb), 0.72);
+  text-transform: uppercase;
+  letter-spacing: 0.25px;
+  max-width: 56px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composition-center-pct {
+  font-size: 16px;
+  font-weight: 900;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.composition-legend {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+}
+
+.composition-legend-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 3px 4px;
+  border-radius: 8px;
+  background: rgba(var(--card-rgb), 0.18);
+  border: 1px solid rgba(var(--text-rgb), 0.08);
+}
+
+.composition-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.composition-coin {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(var(--text-rgb), 0.74);
+  text-transform: uppercase;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.composition-pct {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(var(--text-rgb), 0.56);
+}
+
+.composition-empty {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.portfolio-value {
+  font-size: clamp(20px, 7vw, 32px);
+  font-weight: 900;
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portfolio-positions {
+  font-size: 18px;
+  font-weight: 800;
+  color: rgba(var(--text-rgb), 0.7);
+  margin-top: 6px;
+}
+
+/* Ensure chart is properly sized and centered */
+.portfolio-right svg { display: block; width: auto; height: auto; max-width: 100%; max-height: 100%; }
+.portfolio-right svg > * { vector-effect: non-scaling-stroke; }
+
+
+
+/* dots at the bottom center, inside the card */
+.carousel-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  z-index: 20;
+}
+
+.carousel-dots .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  border: none;
+  padding: 0;
+  transition: all 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+
+.carousel-dots .dot.active {
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.4), inset 0 1px 2px rgba(var(--card-rgb), 0.2);
+  transform: scale(1.2);
+}
+
+
+
+/* Ensure active card is visually on top and fully visible */
+.carousel-card.active {
+  filter: none !important;
+  opacity: 1 !important;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.35), 0 6px 20px rgba(var(--accent-rgb),0.15);
+}
+
+/* show mobile carousel and fix layout on small screens */
+@media (max-width: 768px) {
+  .mobile-portfolio-carousel { 
+    display: block;
+    height: auto;
+    aspect-ratio: 16/9;
+  }
+  .carousel-card {
+    height: 100%;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes float-futuristic {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  25% {
+    transform: translateY(-3px) scale(1.005);
+  }
+  50% {
+    transform: translateY(-1px) scale(1);
+  }
+  75% {
+    transform: translateY(-3px) scale(1.005);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes coin-float {
+  0%, 100% {
+    transform: translateX(0px) translateY(0px);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(0.5px) translateY(-1px);
+    opacity: 0.8;
+  }
+}

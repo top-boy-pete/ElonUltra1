@@ -1,0 +1,1383 @@
+/* global CBApi */
+(function(){
+  // Scoped admin script to avoid leaking globals and duplicate declarations
+  // baseApi should be the ROOT API endpoint (e.g., /api or https://domain.com/api)
+  const baseApi = window.__apiBase || ((typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) ? `http://${window.location.hostname}:5001/api` : (`${window.location.origin}/api`));
+
+const usersTbody = document.getElementById('users-tbody');
+const userDetail = document.getElementById('user-detail');
+const transactionsTbody = document.getElementById('transactions-tbody');
+const adminKeyInput = document.getElementById('admin-key');
+const loadUsersBtn = document.getElementById('load-users');
+const creditForm = document.getElementById('credit-form');
+const currentUserSelect = document.getElementById('current-user-select');
+const editBalanceBtn = document.getElementById('edit-balance-btn');
+const editTotalBtn = document.getElementById('edit-total-btn');
+const depositAddressInputs = document.querySelectorAll('[data-deposit-symbol]');
+const saveDepositAddressesBtn = document.getElementById('save-deposit-addresses');
+const resetDepositAddressesBtn = document.getElementById('reset-deposit-addresses');
+
+const DEFAULT_DEPOSIT_ADDRESSES = {
+  BTC: 'bc1qmockaddressforbtc00000000000000',
+  ETH: '0xMockEthereumAddressForDeposit0000000000000000',
+  USDT: 'TMockTetherAddressUSDT000000000000000',
+  USDC: '0xMockUSDCCryptoAddress0000000000000000'
+};
+
+/* eslint-disable no-console */
+// Debug helpers - set window.__DEBUG = true in dev to enable console logs
+const __DEBUG = (typeof window !== 'undefined' && !!window.__DEBUG);
+function debug(...args){ if (__DEBUG) console.log(...args); }
+function debugWarn(...args){ if (__DEBUG) console.warn(...args); }
+function debugError(...args){ if (__DEBUG) console.error(...args); }
+/* eslint-enable no-console */
+
+function formatCurrency(n){
+  return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(n);
+}
+
+debug('admin.js initialized; baseApi=', baseApi);
+
+// Users modal and list
+const usersListBtn = document.getElementById('users-list-btn');
+const usersModal = document.getElementById('users-modal');
+const usersListContainer = document.getElementById('users-list-container');
+
+if (usersListBtn) {
+  usersListBtn.addEventListener('click', () => {
+    usersModal.classList.add('active');
+  });
+}
+
+// Close modal when clicking outside
+if (usersModal) {
+  usersModal.addEventListener('click', (e) => {
+    if (e.target === usersModal) usersModal.classList.remove('active');
+  });
+}
+
+if (loadUsersBtn) {
+  loadUsersBtn.addEventListener('click', async () => {
+    const key = (adminKeyInput && adminKeyInput.value || '').trim();
+    if (!key) return alert('Paste admin key');
+    loadUsersBtn.disabled = true;
+    try {
+      debug('Admin: loading users with key:', key);
+      const j = await CBApi.adminRequest('/admin/users', key);
+      debug('API Response:', j);
+      
+      // Handle both response formats: { success, users } or direct array
+      let users = Array.isArray(j) ? j : (j.users || []);
+      debug('Processed users array:', users);
+      
+      if (!Array.isArray(users)) {
+        throw new Error(`Expected users array, got: ${typeof users}`);
+      }
+      
+      debug('Admin: loading users - Total users:', users.length, 'Users:', users);
+      
+      // Render as list modal
+      if (usersListContainer) {
+        usersListContainer.innerHTML = users.map(u => `
+          <div class="user-item" data-user-id="${u.id}">
+            <div class="user-item-id">ID #${u.id}</div>
+            <div class="user-item-email">${u.email}</div>
+            <div class="user-item-balance">Balance: ${formatCurrency(u.balance)}</div>
+            <div class="user-item-actions">
+              <button data-id="${u.id}" class="view-user btn btn-small" style="flex:1;min-width:60px">View</button>
+              ${u.is_active ? `<button data-disable="${u.id}" class="disable-user-btn btn btn-secondary btn-small" style="flex:1;min-width:60px">Disable</button>` : `<button data-enable="${u.id}" class="enable-user-btn btn btn-small" style="flex:1;min-width:60px">Enable</button>`}
+              <button data-delete="${u.id}" class="delete-user-btn btn btn-danger btn-small" style="flex:1;min-width:60px">Delete</button>
+            </div>
+          </div>
+        `).join('');
+        
+        // Bind event handlers
+        usersListContainer.querySelectorAll('.view-user').forEach(btn => btn.addEventListener('click', (e) => {
+          loadUserDetails(e.currentTarget.dataset.id, key);
+          usersModal.classList.remove('active');
+        }));
+        usersListContainer.querySelectorAll('.disable-user-btn').forEach(btn => btn.addEventListener('click', (e) => disableUser(e.currentTarget.getAttribute('data-disable'), key)));
+        usersListContainer.querySelectorAll('.enable-user-btn').forEach(btn => btn.addEventListener('click', (e) => enableUser(e.currentTarget.getAttribute('data-enable'), key)));
+        usersListContainer.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', (e) => deleteUser(e.currentTarget.getAttribute('data-delete'), key)));
+      }
+      
+      // Keep table rendering for backward compatibility (though it won't be visible)
+      if (usersTbody) usersTbody.innerHTML = users.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td>${u.email}</td>
+          <td>${formatCurrency(u.balance)}</td>
+        </tr>
+      `).join('');
+      
+      // populate current-user-select
+      if (currentUserSelect) {
+        currentUserSelect.innerHTML = '<option value="">-- none --</option>' + users.map(u => `<option value="${u.id}">${u.email} (${u.id})</option>`).join('');
+      }
+      
+      // persist admin key for convenience
+      sessionStorage.setItem('adminKey', key);
+      
+      // Load transaction tables
+      loadAdminDeposits();
+      loadWithdrawals();
+      
+      // Show modal automatically after loading
+      usersModal.classList.add('active');
+    } catch (err) {
+      debugError('Failed to load users', err);
+      alert('Failed to load users: ' + (err.message || err));
+    } finally { loadUsersBtn.disabled = false; }
+  });
+}
+
+  // Prefill admin key from sessionStorage if available
+  const preKey = sessionStorage.getItem('adminKey');
+  if (preKey && adminKeyInput) {
+    adminKeyInput.value = preKey;
+    debug('Admin key prefilled from session');
+  }
+
+
+  // When selecting a user from the preview dropdown, load their details automatically
+  if (currentUserSelect) {
+    currentUserSelect.addEventListener('change', () => {
+      const val = currentUserSelect.value;
+      const key = (adminKeyInput && adminKeyInput.value || '').trim();
+      if (val && key) {
+        loadUserDetails(val, key);
+      }
+    });
+  }
+
+  // Compact dynamic asset rows: select + amount with add/remove
+  function getSymbolList(){
+    if (window.MARKET_SYMBOLS && Array.isArray(window.MARKET_SYMBOLS) && window.MARKET_SYMBOLS.length>0) return window.MARKET_SYMBOLS;
+    if (window.SYMBOL_MAP) return Object.keys(window.SYMBOL_MAP);
+    return ['BTC','ETH','USDT','USDC'];
+  }
+
+  function makeSymbolOptions(selected){
+    const list = getSymbolList();
+    return list.map(s => `<option value="${s}" ${s===selected? 'selected':''}>${s}</option>`).join('');
+  }
+
+  function createAssetRow(sym = '', amount = ''){
+    const container = document.getElementById('portfolio-fields');
+    if(!container) return null;
+    const row = document.createElement('div');
+    row.className = 'asset-row';
+    row.style = 'display:flex;gap:8px;align-items:center';
+    const selHtml = `<select class="pf-symbol" name="asset_symbol[]">${makeSymbolOptions(sym)}</select>`;
+    const inputHtml = `<input class="pf-amount" name="asset_amount[]" type="number" step="any" placeholder="0" value="${amount}" style="flex:1;padding:6px">`;
+    const rmBtn = `<button type="button" class="btn btn-small remove-asset">Remove</button>`;
+    row.innerHTML = `<div style="min-width:120px">${selHtml}</div><div style="flex:1">${inputHtml}</div><div>${rmBtn}</div>`;
+    container.appendChild(row);
+    row.querySelector('.remove-asset').addEventListener('click', ()=> row.remove());
+    return row;
+  }
+
+  // wire add button
+  const addAssetBtn = document.getElementById('add-asset-btn');
+  if (addAssetBtn) addAssetBtn.addEventListener('click', () => createAssetRow());
+
+async function loadUserDetails(id, key){
+  try{
+    // OPTIMIZED: Fetch single user instead of all users (fixes N+1 problem)
+    console.log(`[Admin] Loading user ${id}...`);
+    const u = await CBApi.adminRequest(`/admin/users/${id}`, key);
+    if (!u || !u.id) { alert('User not found'); return; }
+    
+    if (userDetail) userDetail.innerHTML = `<div><strong>${u.email}</strong><div>ID: ${u.id}</div><div>Balance: ${formatCurrency(u.balance)}</div></div>`;
+    // Set admin preview name to the selected user so the header reflects the loaded user (not the admin)
+    try { document.getElementById('user-name').textContent = u.name || u.email; } catch(e) { /* ignore if missing */ }
+    document.getElementById('credit-user-id').value = u.id;
+    document.getElementById('portfolio-user-id').value = u.id;
+    if (currentUserSelect) currentUserSelect.value = String(u.id);
+
+    await refreshSimulator(u.id, key);
+
+    // Load transactions in parallel (don't await sequentially)
+    const transactionsPromise = CBApi.adminRequest(`/admin/users/${u.id}/transactions`, key)
+      .then(tr => {
+        if (transactionsTbody) transactionsTbody.innerHTML = tr.transactions.map(t=>{
+          const action = (t.type === 'deposit' && t.status !== 'completed')
+            ? `<button class="btn btn-small" data-approve="${t.id}">Approve</button>`
+            : '';
+          return `<tr><td>${new Date(t.created_at).toLocaleString()}</td><td>${t.type}</td><td>${t.amount}</td><td>${t.currency}</td><td>${t.status || ''}</td><td>${action}</td></tr>`;
+        }).join('');
+        if (transactionsTbody) {
+          transactionsTbody.querySelectorAll('[data-approve]').forEach(btn => {
+            btn.addEventListener('click', () => approveDeposit(btn.getAttribute('data-approve')));
+          });
+        }
+      })
+      .catch(e => debugWarn('Could not load transactions', e));
+
+    // Load trades in parallel
+    const tradesPromise = CBApi.adminRequest(`/trades?limit=10`, key, { headers: { 'Authorization': `Bearer ${sessionStorage.getItem('userToken') || ''}` } })
+      .then(trades => {
+        const recentTradesTbody = document.getElementById('recent-trades-user');
+        if (recentTradesTbody && trades.trades && trades.trades.length > 0) {
+          // Filter trades for current user
+          const userTrades = trades.trades.filter(t => t.user_id === u.id);
+          if (userTrades.length > 0) {
+            recentTradesTbody.innerHTML = userTrades.map(t => `
+              <tr>
+                <td>${new Date(t.created_at).toLocaleString()}</td>
+                <td>${t.type || 'allocate'}</td>
+                <td><strong>${t.asset || t.coin || 'N/A'}</strong></td>
+                <td>${parseFloat(t.amount || 0).toFixed(8)}</td>
+                <td>$${parseFloat(t.price || 0).toFixed(2)}</td>
+                <td>$${parseFloat((t.amount || 0) * (t.price || 0)).toFixed(2)}</td>
+              </tr>
+            `).join('');
+          } else {
+            recentTradesTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No trades for this user</td></tr>';
+          }
+        }
+      })
+      .catch(e => {
+        debugWarn('Could not load recent trades', e);
+        const recentTradesTbody = document.getElementById('recent-trades-user');
+        if (recentTradesTbody) recentTradesTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Failed to load trades</td></tr>';
+      });
+
+    // Fetch portfolio - this is critical and should complete before rendering
+    let portfolioPromise = CBApi.adminRequest(`/admin/users/${u.id}/portfolio`, key)
+      .then(p => {
+        console.log(`[Admin] Portfolio loaded for user ${u.id}`);
+        // Handle both response formats: { success: true, assets: {...} } or { assets: {...} }
+        const assets = p.assets || p.portfolio || {};
+        
+        // populate dynamic portfolio input fields
+        try{
+          const container = document.getElementById('portfolio-fields');
+          if (container) container.innerHTML = '';
+          const list = getSymbolList();
+          let rowsAdded = 0;
+          list.forEach(sym => {
+            // Assets come as key-value pairs like { BTC: 1.5, ETH: 2.0 }
+            const bal = Number(assets[sym]) || 0;
+            if (bal > 0) { createAssetRow(sym, bal); rowsAdded++; }
+          });
+          if (rowsAdded === 0) createAssetRow();
+          }catch(e){ debugWarn('Failed to set portfolio input values', e); }
+        
+        // Populate broker preview using CBPortfolio and dashboard renderers
+        try{
+          if (window.CBPortfolio) {
+            // Build assets from portfolio response (assets = p.assets or p.portfolio from above)
+            const assetsList = Object.entries(assets || {}).map(([symbol, amount]) => ({
+              symbol,
+              name: symbol,
+              amount: Number(amount) || 0,
+              value: 0
+            }));
+
+            // IMPORTANT: Clear old portfolio data first
+            window.CBPortfolio.setAssets([]);
+            // Use API-returned balance (may have been auto-corrected by sync logic), fall back to user record
+            const userBalance = Number(p.balance != null ? p.balance : u.balance) || 0;
+            window.CBPortfolio.setBalance(userBalance);
+            // Set assets AFTER setBalance so the zero-balance reset doesn't wipe them
+            if (assetsList.length > 0) {
+              window.CBPortfolio.setAssets(assetsList);
+            }
+            // API returns 'totalValue' (not 'portfolio_value') — use it for the Total Portfolio card
+            const serverTotal = Number(p.totalValue != null ? p.totalValue : p.portfolio_value) || 0;
+            if (serverTotal > 0 && window.CBPortfolio.setTotalValue) {
+              window.CBPortfolio.setTotalValue(serverTotal);
+            }
+
+            // Render immediately with balance / total we already have, then kick off a
+            // price refresh so holdings table shows real per-asset prices and values.
+            if (window.renderPortfolioCards) window.renderPortfolioCards();
+            if (window.renderHoldings) window.renderHoldings();
+            if (window.CBPortfolio.refreshPrices) {
+              window.CBPortfolio.refreshPrices()
+                .then(() => {
+                  if (window.renderPortfolioCards) window.renderPortfolioCards();
+                  if (window.renderHoldings) window.renderHoldings();
+                })
+                .catch(e => debugWarn('Price refresh failed', e));
+            }
+            console.log('[Admin] Portfolio cards rendered; live price refresh requested');
+          }
+        }catch(e){ debugWarn('Failed to populate broker preview', e); }
+      })
+      .catch(e => { debugWarn('Could not load portfolio', e); });
+
+    // Wait for all parallel tasks to complete
+    await Promise.all([transactionsPromise, tradesPromise, portfolioPromise]);
+    console.log(`[Admin] All user details loaded for ${u.id}`);
+  }catch(err){
+    alert('Failed to load user details: '+err.message);
+  }
+}
+
+// Load growth trades for the selected user
+async function loadGrowthTrades() {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  const userIdInput = document.getElementById('credit-user-id');
+  const userId = userIdInput ? parseInt(userIdInput.value, 10) : null;
+  if (!userId || isNaN(userId)) return alert('Select a user first');
+
+  try {
+    // Get growth trades
+    const tradesRes = await CBApi.adminRequest(`/admin/users/${userId}/growth-trades?limit=100`, key, {
+      headers: { 'x-admin-key': key }
+    });
+
+    const tbody = document.getElementById('growth-trades-tbody');
+    if (!tbody) return;
+
+    if (tradesRes.trades && tradesRes.trades.length > 0) {
+      tbody.innerHTML = tradesRes.trades.map(t => {
+        const balanceBefore = parseFloat(t.balance_before);
+        const balanceAfter = parseFloat(t.balance_after);
+        const boostPercent = ((balanceAfter - balanceBefore) / balanceBefore * 100).toFixed(2);
+        
+        return `
+          <tr>
+            <td>${new Date(t.created_at).toLocaleString()}</td>
+            <td>${t.type}</td>
+            <td><strong>${t.asset}</strong></td>
+            <td>${parseFloat(t.amount).toFixed(8)}</td>
+            <td>$${parseFloat(t.price).toFixed(2)}</td>
+            <td>$${parseFloat(t.total).toFixed(2)}</td>
+            <td>$${balanceBefore.toFixed(2)}</td>
+            <td>$${balanceAfter.toFixed(2)}</td>
+            <td style="color:var(--success);font-weight:600">+${boostPercent}%</td>
+          </tr>
+        `;
+      }).join('');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted)">No growth trades yet</td></tr>';
+    }
+
+    // Get growth stats
+    const statsRes = await CBApi.adminRequest(`/admin/users/${userId}/growth-stats`, key, {
+      headers: { 'x-admin-key': key }
+    });
+
+    if (statsRes.stats) {
+      const stats = statsRes.stats;
+      document.getElementById('growth-total-trades').textContent = stats.total_trades || '0';
+      document.getElementById('growth-total-volume').textContent = '$' + (parseFloat(stats.total_volume) || 0).toFixed(2);
+      document.getElementById('growth-avg-boost').textContent = parseFloat(stats.avg_boost || 0).toFixed(2);
+      document.getElementById('growth-peak-balance').textContent = '$' + (parseFloat(stats.peak_balance) || 0).toFixed(2);
+    }
+  } catch (err) {
+    console.error('Failed to load growth trades:', err);
+    alert('Failed to load growth trades: ' + err.message);
+  }
+}
+
+// Trigger balance growth simulator manually for selected user
+async function triggerGrowthNow() {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  const userIdInput = document.getElementById('credit-user-id');
+  const userId = userIdInput ? parseInt(userIdInput.value, 10) : null;
+  if (!userId || isNaN(userId)) return alert('Select a user first');
+
+  if (!confirm('Trigger balance growth now for this user?')) return;
+
+  try {
+    await CBApi.adminRequest(`/admin/users/${userId}/simulator/trigger-growth`, key, {
+      method: 'POST'
+    });
+
+    alert('Balance growth triggered successfully');
+    await loadGrowthTrades();
+  } catch (err) {
+    console.error('Failed to trigger growth:', err);
+    alert('Failed to trigger growth: ' + err.message);
+  }
+}
+
+if (creditForm) {
+  creditForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const key = adminKeyInput && adminKeyInput.value ? adminKeyInput.value.trim() : '';
+    if(!key) return alert('Admin key required');
+    const userIdEl = document.getElementById('credit-user-id');
+    const amountEl = document.getElementById('credit-amount');
+    const currencyEl = document.getElementById('credit-currency');
+    const referenceEl = document.getElementById('credit-reference');
+    if (!userIdEl || !amountEl) return alert('Form elements missing');
+    const uid = userIdEl.value;
+    const amount = parseFloat(amountEl.value);
+    const currency = currencyEl ? currencyEl.value : 'USD';
+    const reference = (referenceEl && referenceEl.value) || 'admin-credit';
+    if(!uid || !amount || amount<=0) return alert('Invalid input');
+    try{
+      const res = await fetch(baseApi + '/admin/credit', { method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': key }, body: JSON.stringify({ userId: parseInt(uid), amount, currency, reference }) });
+      const j = await res.json();
+      if(!res.ok) throw new Error(j.error||'credit failed');
+      alert('Credit successful: txId=' + j.txId);
+      // reload user details
+      loadUserDetails(uid, key);
+      // reload users list
+      if (loadUsersBtn) loadUsersBtn.click();
+    }catch(err){ alert('Credit failed: '+err.message); }
+  });
+}
+
+
+// Set balance button
+const setBalanceBtn = document.getElementById('set-balance-btn');
+if (setBalanceBtn) setBalanceBtn.addEventListener('click', async () => {
+  const key = adminKeyInput && adminKeyInput.value ? adminKeyInput.value.trim() : '';
+  if(!key) return alert('Admin key required');
+  const userIdEl = document.getElementById('credit-user-id');
+  const amountEl = document.getElementById('credit-amount');
+  const taxIdEl = document.getElementById('credit-tax-id');
+  if (!userIdEl || !amountEl) return alert('Form elements missing');
+  const uid = userIdEl.value;
+  const amount = parseFloat(amountEl.value);
+  const taxId = taxIdEl ? taxIdEl.value.trim() : '';
+  if(!uid || isNaN(amount)) return alert('Invalid input');
+  try{
+    const body = { amount, reason: 'admin: manual balance update' };
+    if (taxId) body.tax_id = taxId;
+    const res = await fetch(baseApi + `/admin/users/${uid}/balance/update`, { 
+      method: 'POST', 
+      headers: { 'Content-Type':'application/json', 'x-admin-key': key }, 
+      body: JSON.stringify(body) 
+    });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'balance update failed');
+    alert('Balance updated: $' + parseFloat(amount).toFixed(2) + (taxId ? ' (Tax ID: ' + taxId + ')' : ''));
+    loadUserDetails(uid, key);
+    if (loadUsersBtn) loadUsersBtn.click();
+  }catch(err){ alert('Balance update failed: '+err.message); }
+});
+
+// Portfolio form
+const portfolioForm = document.getElementById('portfolio-form');
+if (portfolioForm) portfolioForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const key = adminKeyInput.value.trim();
+  if(!key) return alert('Admin key required');
+  const uid = document.getElementById('credit-user-id').value || document.getElementById('portfolio-user-id').value;
+  if(!uid) return alert('Select a user first');
+  // Collect assets from the compact asset rows
+  const rows = document.querySelectorAll('#portfolio-fields .asset-row');
+  const assets = {};
+  rows.forEach(r => {
+    try{
+      const sel = r.querySelector('.pf-symbol');
+      const inp = r.querySelector('.pf-amount');
+      if (!sel || !inp) return;
+      const sym = sel.value;
+      const val = parseFloat(inp.value) || 0;
+      assets[sym] = val;
+    }catch(e){ /* ignore malformed row */ }
+  });
+  try{
+    const res = await fetch(baseApi + `/admin/users/${uid}/set-portfolio`, { method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': key }, body: JSON.stringify({ assets }) });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'set portfolio failed');
+    alert('Portfolio set');
+    loadUserDetails(uid, key);
+  }catch(err){ alert('Set portfolio failed: '+err.message); }
+});
+
+async function loadDepositAddressInputs(){
+  if(!depositAddressInputs || !depositAddressInputs.length) return;
+  const key = (adminKeyInput && adminKeyInput.value || '').trim();
+  if (!key) {
+    // Fallback to defaults if no admin key
+    depositAddressInputs.forEach(input => {
+      const sym = input.getAttribute('data-deposit-symbol');
+      input.value = DEFAULT_DEPOSIT_ADDRESSES[sym] || '';
+    });
+    return;
+  }
+  try {
+    // Fetch from server
+    const res = await fetch(baseApi + '/admin/config/deposit-addresses', {
+      headers: { 'x-admin-key': key }
+    });
+    if (!res.ok) throw new Error('Failed to fetch addresses');
+    const data = await res.json();
+    const addresses = data.data?.addresses || {};
+    depositAddressInputs.forEach(input => {
+      const sym = input.getAttribute('data-deposit-symbol');
+      input.value = addresses[sym] || DEFAULT_DEPOSIT_ADDRESSES[sym] || '';
+    });
+  } catch (err) {
+    console.warn('Failed to load deposit addresses from server:', err);
+    // Fallback to defaults
+    depositAddressInputs.forEach(input => {
+      const sym = input.getAttribute('data-deposit-symbol');
+      input.value = DEFAULT_DEPOSIT_ADDRESSES[sym] || '';
+    });
+  }
+}
+
+async function saveDepositAddresses(){
+  const key = adminKeyInput.value.trim();
+  if(!key) return alert('Admin key required');
+
+  const payload = {};
+  depositAddressInputs.forEach(input => {
+    const sym = input.getAttribute('data-deposit-symbol');
+    const val = input.value.trim();
+    if (val) payload[sym] = val;
+  });
+
+  try {
+    const res = await fetch(baseApi + '/admin/config/deposit-addresses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+      body: JSON.stringify({ addresses: payload })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      return alert('Failed to save addresses: ' + (err.error || 'Unknown error'));
+    }
+    alert('✓ Deposit addresses updated successfully on server.');
+  } catch (err) {
+    console.error('Save deposit addresses error:', err);
+    alert('Error saving deposit addresses: ' + err.message);
+  }
+}
+
+if (saveDepositAddressesBtn) saveDepositAddressesBtn.addEventListener('click', async () => {
+  await saveDepositAddresses();
+});
+
+if (resetDepositAddressesBtn) resetDepositAddressesBtn.addEventListener('click', async () => {
+  if (!confirm('Reset all deposit addresses to defaults?')) return;
+  const key = adminKeyInput.value.trim();
+  if(!key) return alert('Admin key required');
+  
+  try {
+    const res = await fetch(baseApi + '/admin/config/deposit-addresses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+      body: JSON.stringify({ addresses: DEFAULT_DEPOSIT_ADDRESSES })
+    });
+    if (!res.ok) throw new Error('Failed to reset');
+    await loadDepositAddressInputs();
+    alert('✓ Deposit addresses reset to defaults.');
+  } catch (err) {
+    alert('Reset failed: ' + err.message);
+  }
+});
+
+// Load deposit addresses asynchronously
+(async () => { await loadDepositAddressInputs(); })().catch(e => console.warn('Failed to load deposit addresses', e));
+
+async function approveDeposit(txId){
+  const key = adminKeyInput.value.trim();
+  const uid = document.getElementById('credit-user-id').value;
+  if(!key) return alert('Admin key required');
+  try{
+    const res = await fetch(baseApi + `/admin/deposits/${txId}/approve`, { method:'POST', headers:{ 'x-admin-key': key } });
+    const j = await res.json();
+    if(!res.ok) throw new Error(j.error||'approve failed');
+    alert('Deposit approved');
+    // Reload deposits list after approval
+    loadAdminDeposits();
+    if (uid) loadUserDetails(uid, key);
+    if (loadUsersBtn) loadUsersBtn.click();
+  }catch(e){ alert('Approve failed: '+(e.message||e)); }
+}
+
+
+
+// Simulator controls
+const simStatusEl = document.getElementById('sim-status');
+const simNextEl = document.getElementById('sim-next');
+const simStartBtn = document.getElementById('sim-start');
+const simPauseBtn = document.getElementById('sim-pause');
+
+async function refreshSimulator(uid, key){
+  if(!uid || !key || !simStatusEl) return;
+  try{
+    const res = await CBApi.adminRequest(`/admin/users/${uid}/simulator`, key);
+    const s = res.simulator || {};
+    simStatusEl.textContent = s.sim_enabled ? (s.sim_paused ? 'Paused' : 'Enabled') : 'Disabled';
+    simNextEl.textContent = s.sim_next_run_at ? new Date(s.sim_next_run_at).toLocaleString() : '—';
+  }catch(e){ debugWarn('sim status error', e.message||e); }
+}
+
+if (simStartBtn) {
+  simStartBtn.addEventListener('click', async () => {
+    const key = adminKeyInput.value.trim();
+    const uid = document.getElementById('credit-user-id').value;
+    if(!uid || !key) return alert('Select user and enter admin key');
+    try{
+      const res = await fetch(baseApi + `/admin/users/${uid}/simulator/start`, { method:'POST', headers:{ 'Content-Type':'application/json','x-admin-key':key }, body: JSON.stringify({ delayMinutes: 0 }) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.error || err.message || `HTTP ${res.status}`);
+      }
+      await refreshSimulator(uid, key);
+      // Refresh full user details to show updated portfolio/balance
+      try { await loadUserDetails(uid, key); } catch(e){ debugWarn('Failed to reload user after simulator start', e); }
+    }catch(e){ alert('Start failed: '+(e.message||e)); }
+  });
+}
+if (simPauseBtn) {
+  simPauseBtn.addEventListener('click', async () => {
+    const key = adminKeyInput.value.trim();
+    const uid = document.getElementById('credit-user-id').value;
+    if(!uid || !key) return alert('Select user and enter admin key');
+    try{
+      const res = await fetch(baseApi + `/admin/users/${uid}/simulator/pause`, { method:'POST', headers:{ 'Content-Type':'application/json','x-admin-key':key } });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        throw new Error(err.error || err.message || `HTTP ${res.status}`);
+      }
+      await refreshSimulator(uid, key);
+      try { await loadUserDetails(uid, key); } catch(e){ debugWarn('Failed to reload user after simulator pause', e); }
+    }catch(e){ alert('Pause failed: '+(e.message||e)); }
+  });
+}
+
+// Inline edit handlers
+if (editBalanceBtn) {
+  editBalanceBtn.addEventListener('click', async () => {
+    const uid = document.getElementById('credit-user-id').value;
+    if (!uid) return alert('Select a user first');
+    const val = prompt('Set new Available Balance (USD):');
+    const amt = parseFloat(val);
+    if (isNaN(amt)) return alert('Invalid amount');
+    const key = adminKeyInput.value.trim();
+    if (!key) return alert('Admin key required');
+    try {
+      const res = await fetch(baseApi + `/admin/users/${uid}/set-balance`, { method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': key }, body: JSON.stringify({ amount: amt }) });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error || 'set balance failed');
+      alert('Balance updated');
+      // refresh
+      loadUserDetails(uid, key);
+      loadUsersBtn.click();
+    } catch (err) { alert('Set balance failed: ' + err.message); }
+  });
+}
+
+// Admin user control helpers
+async function disableUser(uid, key) {
+  if (!confirm('Disable this user?')) return;
+  try {
+    const res = await fetch(baseApi + `/admin/users/${uid}/disable`, { method: 'POST', headers: { 'x-admin-key': key } });
+    const j = await res.json(); if(!res.ok) throw new Error(j.error || 'disable failed');
+    alert('User disabled'); loadUsersBtn.click();
+    if (document.getElementById('credit-user-id').value == uid) loadUserDetails(uid, key);
+  } catch (e) { alert('Disable failed: ' + (e.message||e)); }
+}
+async function enableUser(uid, key) {
+  try {
+    const res = await fetch(baseApi + `/admin/users/${uid}/enable`, { method: 'POST', headers: { 'x-admin-key': key } });
+    const j = await res.json(); if(!res.ok) throw new Error(j.error || 'enable failed');
+    alert('User enabled'); loadUsersBtn.click();
+    if (document.getElementById('credit-user-id').value == uid) loadUserDetails(uid, key);
+  } catch (e) { alert('Enable failed: ' + (e.message||e)); }
+}
+async function deleteUser(uid, key) {
+  if (!confirm('Deactivate this user account? This will mark the account as inactive but preserve all data.')) return;
+  try {
+    const res = await fetch(baseApi + `/admin/users/${uid}/delete`, { 
+      method: 'POST', 
+      headers: { 'Content-Type':'application/json', 'x-admin-key': key },
+      body: JSON.stringify({})
+    });
+    const j = await res.json(); if(!res.ok) throw new Error(j.error || 'delete failed');
+    alert('User account deactivated'); loadUsersBtn.click();
+    if (document.getElementById('credit-user-id').value == uid) document.getElementById('user-detail').innerHTML = 'Select a user to view details';
+  } catch (e) { alert('Delete failed: ' + (e.message||e)); }
+}
+
+// Admin prompts send handler
+const sendPromptBtn = document.getElementById('send-prompt-btn');
+debug('sendPromptBtn element:', sendPromptBtn);
+if (sendPromptBtn) {
+  sendPromptBtn.addEventListener('click', async () => {
+    debug('Send prompt clicked');
+    const key = adminKeyInput.value.trim(); 
+    if(!key) return alert('Admin key required');
+    const message = (document.getElementById('prompt-message').value || '').trim();
+    const idsRaw = (document.getElementById('prompt-user-ids').value || '').trim();
+    if (!message) return alert('Message required');
+    let userIds = [];
+    if (idsRaw) userIds = idsRaw.split(',').map(s=>parseInt(s.trim(),10)).filter(n=>!isNaN(n));
+    debug('Sending prompt:', { message, userIds });
+    try {
+      const res = await fetch(baseApi + '/admin/prompts', { 
+        method: 'POST', 
+        headers: { 'Content-Type':'application/json', 'x-admin-key': key }, 
+        body: JSON.stringify({ userIds, message }) 
+      });
+      const j = await res.json(); 
+      debug('Prompt response:', j, 'Status:', res.status);
+      if(!res.ok) throw new Error(j.error || `Server error: ${res.status}`);
+      alert('✅ Prompt sent successfully!'); 
+      document.getElementById('prompt-message').value = ''; 
+      document.getElementById('prompt-user-ids').value = '';
+    }catch(e){ 
+      console.error('Prompt error:', e);
+      alert('❌ Send prompt failed: '+(e.message||e)); 
+    }
+  });
+} else {
+  console.warn('sendPromptBtn not found on page');
+}
+if (editTotalBtn) {
+  editTotalBtn.addEventListener('click', async () => {
+    const uid = document.getElementById('credit-user-id').value;
+    if (!uid) return alert('Select a user first');
+    const val = prompt('Set portfolio total USD value (will update portfolio usd_value):');
+    const amt = parseFloat(val);
+    if (isNaN(amt)) return alert('Invalid amount');
+    const key = adminKeyInput.value.trim();
+    if (!key) return alert('Admin key required');
+    try {
+      // We don't have a direct endpoint to set usd_value; set a synthetic USDT holding to reach target
+      // Fetch current portfolio to compute delta
+      const p = await CBApi.adminRequest(`/admin/users/${uid}/portfolio`, key);
+      const pf = p.portfolio || {};
+      const current = Number(pf.usd_value) || 0;
+      const delta = amt - current;
+      if (Math.abs(delta) < 0.01) return alert('No change required');
+      // Credit USD delta to user balance if positive, or set balance lower if negative
+      if (delta > 0) {
+        const res = await fetch(baseApi + '/admin/credit', { method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': key }, body: JSON.stringify({ userId: uid, amount: delta, currency: 'USD', reference: 'admin-adjust-portfolio' }) });
+        const j = await res.json(); if(!res.ok) throw new Error(j.error||'credit failed');
+      } else {
+        // reduce balance to reflect negative delta by setting balance lower
+        const usersData = await CBApi.adminRequest('/admin/users', key);
+        const users = Array.isArray(usersData) ? usersData : (usersData.users || []);
+        const newBal = (Number(users.find(u=>String(u.id)===String(uid)).balance) + delta).toFixed(2);
+        const res = await fetch(baseApi + `/admin/users/${uid}/set-balance`, { method: 'POST', headers: { 'Content-Type':'application/json', 'x-admin-key': key }, body: JSON.stringify({ amount: Number(newBal) }) });
+        const j = await res.json(); if(!res.ok) throw new Error(j.error||'set balance failed');
+      }
+      alert('Portfolio target applied. Recalculating...');
+      loadUserDetails(uid, key);
+      loadUsersBtn.click();
+    } catch (err) { alert('Failed to adjust portfolio: ' + err.message); }
+  });
+}
+
+// Trigger growth button for selected user
+const triggerGrowthBtn = document.getElementById('trigger-growth-btn');
+if (triggerGrowthBtn) {
+  triggerGrowthBtn.addEventListener('click', async () => {
+    const key = adminKeyInput.value.trim();
+    if (!key) return alert('Admin key required');
+    const userIdInput = document.getElementById('credit-user-id');
+    const userId = userIdInput ? parseInt(userIdInput.value, 10) : null;
+    if (!userId || isNaN(userId)) return alert('Select a user first');
+
+    if (!confirm('Trigger balance growth now for this user?')) return;
+
+    try {
+      await CBApi.adminRequest(`/admin/users/${userId}/simulator/trigger-growth`, key, {
+        method: 'POST',
+        headers: { }
+      });
+
+      alert('✅ Balance growth triggered successfully');
+      await loadGrowthTrades();
+      await loadUserDetails(userId, key);
+    } catch (err) {
+      console.error('Failed to trigger growth:', err);
+      alert('❌ Failed to trigger growth: ' + err.message);
+    }
+  });
+}
+
+// Trigger growth for all users
+const triggerGrowthAllBtn = document.getElementById('trigger-growth-btn-all');
+if (triggerGrowthAllBtn) {
+  triggerGrowthAllBtn.addEventListener('click', async () => {
+    const key = adminKeyInput.value.trim();
+    if (!key) return alert('Admin key required');
+    
+    if (!confirm('⚠️ Trigger balance growth NOW for ALL users? This will immediately run the simulator for all active users.')) return;
+
+    try {
+      const res = await fetch(baseApi + '/admin/simulator/trigger-all', {
+        method: 'POST',
+        headers: { 'x-admin-key': key }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'trigger all failed');
+      
+      alert(`✅ Balance growth triggered for ${data.usersProcessed || 0} users\nTrades generated: ${data.tradesGenerated || 0}`);
+      if (loadUsersBtn) loadUsersBtn.click();
+    } catch (err) {
+      console.error('Failed to trigger all:', err);
+      alert('❌ Failed: ' + err.message);
+    }
+  });
+}
+
+// Reset user data button
+const resetUserBtn = document.getElementById('reset-user-btn');
+if (resetUserBtn) {
+  resetUserBtn.addEventListener('click', async () => {
+    const key = adminKeyInput.value.trim();
+    if (!key) return alert('Admin key required');
+    const userIdInput = document.getElementById('credit-user-id');
+    const userId = userIdInput ? parseInt(userIdInput.value, 10) : null;
+    if (!userId || isNaN(userId)) return alert('Select a user first');
+
+    if (!confirm('⚠️ RESET USER DATA? This will clear all trades and reset portfolio for this user. Continue?')) return;
+
+    try {
+      const res = await fetch(baseApi + `/admin/users/${userId}/reset`, {
+        method: 'POST',
+        headers: { 'x-admin-key': key }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'reset failed');
+      
+      alert('✅ User data reset successfully');
+      await loadUserDetails(userId, key);
+    } catch (err) {
+      console.error('Failed to reset user:', err);
+      alert('❌ Failed: ' + err.message);
+    }
+  });
+}
+
+// Clear all trades for all users
+window.clearAllTrades = async function() {
+  const key = document.getElementById('admin-key').value.trim();
+  if (!key) return alert('Admin key required');
+
+  if (!confirm('⚠️ CLEAR ALL TRADES FOR ALL USERS? This will:\n\n✓ Delete all trade history\n✓ Keep user balances intact\n✓ Keep portfolio allocation intact\n\nThis action cannot be undone. Continue?')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(baseApi + '/admin/trades/clear-all', {
+      method: 'POST',
+      headers: { 'x-admin-key': key }
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'clear failed');
+
+    alert(`✅ Successfully cleared ${data.deletedTrades} trades\n\nThe balance growth simulator will generate new trades on the next hourly run.`);
+
+    // Refresh UI
+    const loadUsersBtn = document.getElementById('load-users');
+    if (loadUsersBtn) loadUsersBtn.click();
+    
+    const uid = document.getElementById('credit-user-id').value;
+    if (uid) {
+      const recentTrades = document.getElementById('recent-trades-user');
+      if (recentTrades) recentTrades.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No trades for this user</td></tr>';
+      
+      const growthTbody = document.getElementById('growth-trades-tbody');
+      if (growthTbody) growthTbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted)">No growth trades yet</td></tr>';
+    }
+  } catch (err) {
+    console.error('Clear trades error:', err);
+    alert('❌ Failed to clear trades: ' + err.message);
+  }
+};
+
+// Load and display active prompts
+async function loadActivePrompts() {
+  try {
+    const key = adminKeyInput.value || localStorage.getItem('adminKey');
+    const res = await fetch(baseApi + '/admin/prompts', {
+      method: 'GET',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'failed to load prompts');
+
+    const listContainer = document.getElementById('active-prompts-list');
+    const active = (data.prompts || []).filter(p => p.is_active);
+    
+    if (active.length === 0) {
+      listContainer.innerHTML = '<div style="text-align:center;color:var(--muted);padding:12px">No active prompts</div>';
+      return;
+    }
+
+    listContainer.innerHTML = active.map(p => `
+      <div style="padding:10px;border:1px solid var(--border);border-radius:6px;background:rgba(0,150,200,0.05);display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+        <div style="flex:1;font-size:12px">
+          <div style="font-weight:600;color:#00d4ff;margin-bottom:4px">ID: ${p.id}</div>
+          <div style="color:var(--muted);line-height:1.4">${p.message.substring(0, 80)}...</div>
+          <div style="font-size:11px;color:rgba(100,200,255,0.6);margin-top:4px">${new Date(p.created_at).toLocaleString()}</div>
+        </div>
+        <button onclick="disablePrompt(${p.id})" class="btn btn-small" style="font-size:11px;padding:6px 10px;background:#f87171;border:none">Disable</button>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Load prompts error:', err);
+    const listContainer = document.getElementById('active-prompts-list');
+    if (listContainer) listContainer.innerHTML = '<div style="color:#f87171;padding:12px">Error loading prompts: ' + err.message + '</div>';
+  }
+}
+
+// Disable a single prompt
+async function disablePrompt(promptId) {
+  try {
+    const key = adminKeyInput.value || localStorage.getItem('adminKey');
+    const res = await fetch(baseApi + `/admin/prompts/${promptId}/disable`, {
+      method: 'POST',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'failed to disable');
+    console.log('[DISABLE PROMPT] ✓ Prompt', promptId, 'disabled');
+    loadActivePrompts();
+  } catch (err) {
+    console.error('Disable prompt error:', err);
+    alert('❌ Failed to disable prompt: ' + err.message);
+  }
+}
+
+// Expose globally so buttons can call it
+window.disablePrompt = disablePrompt;
+
+// Expose transaction management functions globally
+window.loadWithdrawals = loadWithdrawals;
+window.loadGrowthTrades = loadGrowthTrades;
+window.triggerGrowthNow = triggerGrowthNow;
+window.loadAdminDeposits = loadAdminDeposits;
+window.failWithdrawal = failWithdrawal;
+window.failDeposit = failDeposit;
+window.loadDeposits = loadDeposits;
+
+// Load and display deposits
+async function loadDeposits() {
+  const key = document.getElementById('admin-key')?.value || sessionStorage.getItem('adminKey');
+  const tbody = document.getElementById('deposits-admin-tbody');
+  if (!tbody) return;
+
+  if (!key) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red">Please enter admin key first</td></tr>';
+    return;
+  }
+
+  try {
+    const data = await CBApi.adminRequest('/admin/transactions', key);
+
+    const deposits = (data.transactions || []).filter(t => t.type === 'deposit');
+
+    const html = deposits.map(t => {
+      const statusColor = t.status === 'completed' ? '#10b981' : '#fbbf24';
+      return `<tr>
+        <td>${new Date(t.date || t.created_at).toLocaleDateString()}</td>
+        <td>${t.user || t.user_id || '—'}</td>
+        <td>${t.method || t.currency || '—'}</td>
+        <td>$${parseFloat(t.amount).toFixed(2)}</td>
+        <td><span style="padding:3px 8px;border-radius:4px;font-size:11px;background:${statusColor};color:white">${t.status || 'pending'}</span></td>
+        <td style="font-size:11px;font-family:monospace">${(t.txid || t.reference || '—').substring(0,12)}${t.txid && t.txid.length > 12 ? '...' : ''}</td>
+        <td>
+          <button onclick="editTransaction('${t.id}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          ${t.status !== 'completed' ? `<button onclick="approveTransaction('${t.id}', 'deposit')" style="padding:2px 4px;font-size:11px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Approve</button>` : ''}
+          <button onclick="deleteTransaction('${t.id}')" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No deposits yet</td></tr>';
+  } catch (err) {
+    console.error('Load deposits error:', err);
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red">Error loading deposits: ' + err.message + '</td></tr>';
+  }
+}
+
+// Load and display withdrawals with fee status
+async function loadWithdrawals() {
+  const key = document.getElementById('admin-key')?.value || sessionStorage.getItem('adminKey');
+  const tbody = document.getElementById('withdrawals-admin-tbody');
+  if (!tbody) return;
+
+  if (!key) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:red">Please enter admin key first</td></tr>';
+    return;
+  }
+
+  try {
+    const data = await CBApi.adminRequest('/admin/withdrawals', key);
+
+    const html = (data.withdrawals || []).map(w => {
+      const feeStatusClass = w.fee_status === 'confirmed'
+        ? 'status-confirmed'
+        : w.fee_status === 'submitted'
+          ? 'status-submitted'
+          : 'status-required';
+
+      let actionBtns = '';
+      if (w.status === 'pending' || w.status === 'processing') {
+        // Match deposit table look
+        actionBtns = `
+          <button onclick="editTransaction('${w.id}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          <button onclick="approveTransaction('${w.id}', 'withdrawal')" style="padding:2px 4px;font-size:11px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Approve</button>
+          <button onclick="failWithdrawal(${w.id})" style="padding:2px 4px;font-size:11px;background:#ff9800;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Failed</button>
+          <button onclick="deleteWithdrawal(${w.id})" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
+        `;
+      } else {
+        actionBtns = `
+          <button onclick="editTransaction('${w.id}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          <button onclick="deleteWithdrawal(${w.id})" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
+        `;
+      }
+
+      return `<tr>
+        <td>${new Date(w.created_at).toLocaleString()}</td>
+        <td>${w.user_id}</td>
+        <td>${w.crypto_type}</td>
+        <td>$${parseFloat(w.amount).toFixed(2)}</td>
+        <td>${w.status}</td>
+        <td><span class="status-pill ${feeStatusClass}">${w.fee_status || 'required'}</span></td>
+        <td>${w.txn_hash || '-'}</td>
+        <td style="display:flex;gap:4px;flex-wrap:wrap">${actionBtns}</td>
+      </tr>`;
+    }).join('');
+
+    tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No withdrawals</td></tr>';
+  } catch (err) {
+    console.error('[ADMIN] loadWithdrawals error:', err);
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:red">Error: ${err.message}</td></tr>`;
+  }
+}
+
+async function confirmWithdrawalFee(withdrawalId) {
+  // Kept for backwards compatibility / debugging, but the primary action is now "Complete".
+  const adminKey = document.getElementById('admin-key')?.value || sessionStorage.getItem('adminKey');
+  if (!adminKey) return alert('Admin key required');
+  if (!confirm('Confirm withdrawal fee?')) return;
+
+  try {
+    const response = await fetch(`${baseApi}/admin/withdrawals/${withdrawalId}/confirm-fee`, {
+      method: 'POST',
+      headers: {
+        'x-admin-key': adminKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ confirmedBy: 'admin' })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+    await loadWithdrawals();
+    alert('✓ Withdrawal fee confirmed');
+  } catch (err) {
+    console.error('[ADMIN] Confirm fee error:', err);
+    alert('❌ Failed to confirm fee: ' + err.message);
+  }
+}
+
+window.loadWithdrawals = loadWithdrawals;
+window.confirmWithdrawalFee = confirmWithdrawalFee;
+
+// Load deposits for admin deposits tab
+async function loadAdminDeposits() {
+  const key = adminKeyInput.value.trim();
+  const tbody = document.getElementById('deposits-admin-tbody');
+  if (!tbody) return;
+
+  if (!key) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red">Please enter admin key first</td></tr>';
+    return;
+  }
+
+  try {
+    // Get the selected user ID to filter deposits
+    const selectedUserId = currentUserSelect?.value;
+    
+    // Fetch transactions, filter for deposits
+    let endpoint = '/admin/transactions';
+    if (selectedUserId) {
+      endpoint = `/admin/users/${selectedUserId}/transactions`;
+    }
+    
+    const data = await CBApi.adminRequest(endpoint, key);
+
+    const deposits = (data.transactions || []).filter(t => t.type === 'deposit');
+
+    const html = deposits.map(d => {
+      const statusColor = d.status === 'completed' ? '#10b981' : d.status === 'failed' ? '#ef4444' : '#fbbf24';
+      let actionBtns = '';
+      if (d.status !== 'completed' && d.status !== 'failed') {
+        actionBtns = `
+          <button onclick="editTransaction('${d.id}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          <button onclick="approveTransaction('${d.id}', 'deposit')" style="padding:2px 4px;font-size:11px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Approve</button>
+          <button onclick="failDeposit('${d.id}')" style="padding:2px 4px;font-size:11px;background:#ff9800;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Failed</button>
+          <button onclick="deleteTransaction('${d.id}', 'deposit')" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
+        `;
+      } else {
+        actionBtns = `
+          <button onclick="editTransaction('${d.id}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          <button onclick="deleteTransaction('${d.id}', 'deposit')" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
+        `;
+      }
+
+      return `<tr>
+        <td>${new Date(d.created_at).toLocaleDateString()}</td>
+        <td>${d.user_id}</td>
+        <td>${d.currency}</td>
+        <td>$${parseFloat(d.amount).toFixed(2)}</td>
+        <td><span style="padding:3px 8px;border-radius:4px;font-size:11px;background:${statusColor};color:white">${d.status}</span></td>
+        <td style="font-size:11px;font-family:monospace">${(d.reference || '—').substring(0,12)}${d.reference && d.reference.length > 12 ? '...' : ''}</td>
+        <td>${actionBtns}</td>
+      </tr>`;
+    }).join('');
+
+    tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:var(--muted)">No deposits yet</td></tr>';
+  } catch (err) {
+    console.error('Load deposits error:', err);
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:red">Error: ${err.message}</td></tr>`;
+  }
+}
+
+// Complete deposit (approve)
+async function completeDeposit(depositId) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('Complete this deposit? User balance will be credited.')) return;
+  
+  try {
+    const res = await fetch(baseApi + `/admin/deposits/${depositId}/approve`, {
+      method: 'POST',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'approval failed');
+    alert('✅ Deposit completed successfully!');
+    await loadAdminDeposits();
+    // Also refresh user details if user is selected
+    const selectedUserId = currentUserSelect?.value;
+    if (selectedUserId) loadUserDetails(selectedUserId, key);
+  } catch (err) {
+    console.error('Complete deposit error:', err);
+    alert('❌ Failed to complete deposit: ' + err.message);
+  }
+}
+
+// Complete withdrawal (approve withdrawal AND confirm fee)
+async function completeWithdrawal(withdrawalId) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('Complete this withdrawal? This will approve the withdrawal and confirm the fee.')) return;
+
+  try {
+    const res = await fetch(baseApi + `/admin/withdrawals/${withdrawalId}/approve`, {
+      method: 'POST',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approvedBy: 'admin' })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'approval failed');
+    alert('✅ Withdrawal completed successfully!');
+    await loadWithdrawals();
+  } catch (err) {
+    console.error('Complete withdrawal error:', err);
+    alert('❌ Failed to complete withdrawal: ' + err.message);
+  }
+}
+
+// Mark withdrawal as failed
+async function failWithdrawal(withdrawalId) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('Mark this withdrawal as failed? The user will be refunded.')) return;
+
+  try {
+    const res = await fetch(baseApi + `/admin/withdrawals/${withdrawalId}/fail`, {
+      method: 'POST',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ failedBy: 'admin' })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'fail withdrawal failed');
+    alert('✅ Withdrawal marked as failed (refunded)');
+    await loadWithdrawals();
+  } catch (err) {
+    console.error('Fail withdrawal error:', err);
+    alert('❌ Failed to mark withdrawal as failed: ' + err.message);
+  }
+}
+
+// Delete withdrawal
+async function deleteWithdrawal(withdrawalId) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('⚠️ DELETE this withdrawal permanently? Pending withdrawals will be refunded.')) return;
+
+  try {
+    const res = await fetch(baseApi + `/admin/withdrawals/${withdrawalId}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'delete failed');
+    alert('✅ Withdrawal deleted');
+    await loadWithdrawals();
+  } catch (err) {
+    console.error('Delete withdrawal error:', err);
+    alert('❌ Failed to delete withdrawal: ' + err.message);
+  }
+}
+
+// Mark deposit as failed
+async function failDeposit(depositId) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('Mark this deposit as failed?')) return;
+  
+  try {
+    const res = await fetch(baseApi + `/admin/deposits/${depositId}/fail`, {
+      method: 'POST',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'fail deposit failed');
+    alert('✅ Deposit marked as failed');
+    await loadAdminDeposits();
+  } catch (err) {
+    console.error('Fail deposit error:', err);
+    alert('❌ Failed to mark deposit as failed: ' + err.message);
+  }
+}
+
+// Delete deposit
+async function deleteDeposit(depositId) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('⚠️ DELETE this deposit permanently? This cannot be undone.')) return;
+  
+  try {
+    const res = await fetch(baseApi + `/admin/deposits/${depositId}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'delete failed');
+    alert('✅ Deposit deleted');
+    await loadAdminDeposits();
+  } catch (err) {
+    console.error('Delete deposit error:', err);
+    alert('❌ Failed to delete deposit: ' + err.message);
+  }
+}
+
+
+// Approve transaction (deposit or withdrawal)
+async function approveTransaction(id, type) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('Approve this ' + type + '?')) return;
+  try {
+    let url, reloadFn;
+    if (type === 'deposit') {
+      url = baseApi + `/admin/deposits/${id}/approve`;
+      reloadFn = loadAdminDeposits;
+    } else if (type === 'withdrawal') {
+      url = baseApi + `/admin/withdrawals/${id}/approve`;
+      reloadFn = loadWithdrawals;
+    } else {
+      throw new Error('Unknown transaction type');
+    }
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approvedBy: 'admin' })
+    });
+    const data = await res.json().catch(() => ({}));
+    console.log('[ADMIN] approveTransaction response', data);
+    if (!res.ok) throw new Error(data.error || 'approval failed');
+    // if a withdrawal was returned, display its fee status for clarity
+    if (data.withdrawal && data.withdrawal.fee_status) {
+      alert('✅ ' + type.charAt(0).toUpperCase() + type.slice(1) + ' approved successfully! (fee_status: ' + data.withdrawal.fee_status + ')');
+    } else {
+      alert('✅ ' + type.charAt(0).toUpperCase() + type.slice(1) + ' approved successfully!');
+    }
+    await reloadFn();
+  } catch (err) {
+    console.error('Approve ' + type + ' error:', err);
+    alert('❌ Failed to approve ' + type + ': ' + err.message);
+  }
+}
+
+// Delete transaction (deposit or withdrawal)
+async function deleteTransaction(id, type) {
+  const key = adminKeyInput.value.trim();
+  if (!key) return alert('Admin key required');
+  if (!confirm('⚠️ DELETE this ' + (type || 'transaction') + ' permanently?')) return;
+  try {
+    let url, reloadFn;
+    if (type === 'deposit') {
+      url = baseApi + `/admin/deposits/${id}`;
+      reloadFn = loadAdminDeposits;
+    } else if (type === 'withdrawal') {
+      url = baseApi + `/admin/withdrawals/${id}`;
+      reloadFn = loadWithdrawals;
+    } else {
+      // fallback: try both
+      url = baseApi + `/admin/transactions/${id}`;
+      reloadFn = () => { loadAdminDeposits(); loadWithdrawals(); };
+    }
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: { 'x-admin-key': key, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'delete failed');
+    alert('✅ ' + (type || 'Transaction').charAt(0).toUpperCase() + (type || 'Transaction').slice(1) + ' deleted');
+    await reloadFn();
+  } catch (err) {
+    console.error('Delete ' + (type || 'transaction') + ' error:', err);
+    alert('❌ Failed to delete ' + (type || 'transaction') + ': ' + err.message);
+  }
+}
+
+// Expose deposit/withdrawal functions globally
+window.completeDeposit = completeDeposit;
+window.failDeposit = failDeposit;
+window.deleteDeposit = deleteDeposit;
+window.completeWithdrawal = completeWithdrawal;
+window.failWithdrawal = failWithdrawal;
+window.deleteWithdrawal = deleteWithdrawal;
+window.approveTransaction = approveTransaction;
+window.deleteTransaction = deleteTransaction;
+
+// Wire tab switching for transactions
+document.querySelectorAll('.transaction-tab').forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    const tabId = e.target.getAttribute('data-tab');
+    document.querySelectorAll('.transaction-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tx-tab-content').forEach(c => c.style.display = 'none');
+    e.target.classList.add('active');
+    const content = document.getElementById(tabId);
+    if (content) content.style.display = 'block';
+
+    // Load data for the tab
+    if (tabId === 'deposits-tx') {
+      loadAdminDeposits();
+    }
+  });
+});
+
+// Set up event listeners
+document.getElementById('refresh-prompts-btn')?.addEventListener('click', loadActivePrompts);
+window.addEventListener('adminKeyLoaded', () => {
+  loadActivePrompts();
+  loadWithdrawals();
+});
+
+})();
+
+

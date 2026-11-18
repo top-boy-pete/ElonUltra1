@@ -1,0 +1,225 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+const { verifyToken } = require('../middleware/auth');
+const { recordLossIfApplicable } = require('../services/balanceChanges');
+const sse = require('../sse/broadcaster');
+
+const MIN_WITHDRAWAL_FEE_RATE = 0.0789; // 7.89%
+const MAX_WITHDRAWAL_FEE_RATE = 0.0789; // 7.89%
+const FEE_CURRENCY = 'USD';
+
+function getRandomWithdrawalFeeRate() {
+  return MIN_WITHDRAWAL_FEE_RATE + Math.random() * (MAX_WITHDRAWAL_FEE_RATE - MIN_WITHDRAWAL_FEE_RATE);
+}
+
+// POST: Request a new withdrawal (adds a fixed fee of 7.89%, PENDING until admin approval)
+router.post('/', verifyToken, async (req, res) => {
+  const { amount, crypto_type, crypto_address, fee_rate } = req.body;
+  const userId = req.userId;
+  console.log('[WITHDRAWAL REQUEST] Incoming request from user:', userId, 'payload:', { amount, crypto_type, crypto_address });
+
+  // Validate input
+  const amt = parseFloat(amount);
+  if (!amt || isNaN(amt) || amt <= 0) {
+    return res.status(400).json({ error: 'Amount must be a positive number' });
+  }
+  if (!crypto_type || !crypto_address) {
+    return res.status(400).json({ error: 'Crypto type and address are required' });
+  }
+
+  const supportedCryptos = ['BTC', 'ETH', 'USDT', 'USDC', 'XRP', 'ADA'];
+  if (!supportedCryptos.includes(crypto_type.toUpperCase())) {
+    return res
+      .status(400)
+      .json({ error: `Unsupported crypto type. Supported: ${supportedCryptos.join(', ')}` });
+  }
+
+  // Validate crypto address (simple regex, not exhaustive)
+  const addressRegex = /^[a-zA-Z0-9]{20,255}$/;
+  if (!addressRegex.test(crypto_address)) {
+    return res.status(400).json({ error: 'Invalid crypto address format' });
+  }
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Lock user balance and validate sufficient funds (but DON'T deduct yet)
+    const balRes = await client.query('SELECT COALESCE(balance,0) AS balance FROM users WHERE id=$1 FOR UPDATE', [userId]);
+    if (!balRes.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const currentBalance = parseFloat(balRes.rows[0].balance) || 0;
+    const parsedFeeRate = Number(fee_rate);
+    const feeRate = Number.isFinite(parsedFeeRate)
+      ? parsedFeeRate
+      : getRandomWithdrawalFeeRate();
+
+    if (feeRate < MIN_WITHDRAWAL_FEE_RATE || feeRate > MAX_WITHDRAWAL_FEE_RATE) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Invalid withdrawal fee rate' });
+    }
+
+    const feeAmount = amt * feeRate;
+    const balanceSnapshot = currentBalance;
+
+    console.log('[WITHDRAWAL] Creating withdrawal request (PENDING):', { userId, amt, crypto_type, feeAmount, feeRate, feeCurrency: FEE_CURRENCY });
+    const withdrawalResult = await client.query(
+      `INSERT INTO withdrawals(user_id, amount, crypto_type, crypto_address, status, balance_snapshot, fee_amount, fee_currency, fee_status)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8, 'required')
+       RETURNING id, status, created_at, fee_amount, fee_currency, fee_status, balance_snapshot`,
+      [userId, amt, crypto_type.toUpperCase(), crypto_address, 'pending', balanceSnapshot, feeAmount, FEE_CURRENCY]
+    );
+
+    console.log('[WITHDRAWAL] Withdrawal request created, ID:', withdrawalResult.rows[0].id);
+
+    // Create transaction record with PENDING status
+    console.log('[WITHDRAWAL] Recording transaction (PENDING)');
+    await client.query(
+      'INSERT INTO transactions(user_id, type, amount, currency, status, reference, created_at) VALUES($1,$2,$3,$4,$5,$6,NOW())',
+      [userId, 'withdrawal', amt, crypto_type.toUpperCase(), 'pending', `withdrawal-${withdrawalResult.rows[0].id}`]
+    );
+
+    // NOTE: Balance is NOT deducted here - it will be deducted when admin approves
+    // This allows the withdrawal to be cancelled without balance loss if admin rejects it
+
+    await client.query('COMMIT');
+    console.log('[WITHDRAWAL] ✓ Withdrawal request created successfully (awaiting admin approval)');
+
+    const withdrawal = withdrawalResult.rows[0];
+    res.status(201).json({
+      success: true,
+      withdrawal: {
+        id: withdrawal.id,
+        amount: amt,
+        crypto_type: crypto_type.toUpperCase(),
+        status: withdrawal.status,
+        created_at: withdrawal.created_at,
+        fee_amount: withdrawal.fee_amount,
+        fee_rate: feeRate,
+        fee_currency: withdrawal.fee_currency,
+        fee_status: withdrawal.fee_status,
+        balance_snapshot: withdrawal.balance_snapshot,
+        message: `Withdrawal request of $${amt} submitted. Awaiting admin approval to process.`
+      },
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[WITHDRAWAL] ✗ Creation error:', err && err.stack ? err.stack : err);
+    // Return helpful details in dev so it's easier to debug (will not expose sensitive data in prod)
+    res.status(500).json({ error: 'Failed to create withdrawal request', details: err && err.message ? err.message : String(err) });
+  } finally {
+    client.release();
+  }
+});
+
+// GET: Retrieve withdrawal status by ID
+router.get('/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.userId;
+
+  try {
+    const result = await db.query(
+      `SELECT id, amount, crypto_type, crypto_address, status, txn_hash, error_message, created_at, processed_at,
+              fee_amount, fee_currency, fee_status, balance_snapshot
+       FROM withdrawals WHERE id=$1 AND user_id=$2`,
+      [id, userId]
+    );
+
+    if (!result.rows || result.rows.length === 0) {
+      return res.status(404).json({ error: 'Withdrawal not found' });
+    }
+
+    const withdrawal = result.rows[0];
+    console.log('[GET WITHDRAWAL] Returning withdrawal:', { id, fee_status: withdrawal.fee_status, status: withdrawal.status });
+    res.json({ success: true, withdrawal });
+  } catch (err) {
+    console.error('Withdrawal fetch error:', err);
+    res.status(500).json({ error: 'Failed to fetch withdrawal' });
+  }
+});
+
+// GET: List all withdrawals for the current user
+router.get('/', verifyToken, async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    const result = await db.query(
+      `SELECT id, amount, crypto_type, status, created_at, processed_at, fee_amount, fee_currency, fee_status
+       FROM withdrawals WHERE user_id=$1 ORDER BY created_at DESC LIMIT 20`,
+      [userId]
+    );
+
+    res.json({ success: true, withdrawals: result.rows });
+  } catch (err) {
+    console.error('Withdrawals list error:', err);
+    res.status(500).json({ error: 'Failed to fetch withdrawals' });
+  }
+});
+
+// Helper used by both native and alias endpoints to update fee status
+async function markFeeSubmitted(withdrawalId, userId) {
+  const result = await db.query(
+    `UPDATE withdrawals
+       SET fee_status='submitted'
+       WHERE id=$1 AND user_id=$2
+       RETURNING id, status, fee_status`,
+    [withdrawalId, userId]
+  );
+  return result.rows[0];
+}
+
+// User marks fee as submitted (acknowledges payment)
+router.post('/:id/fee-submitted', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.userId;
+  try {
+    const row = await markFeeSubmitted(id, userId);
+    if (!row) {
+      return res.status(404).json({ error: 'Withdrawal not found' });
+    }
+
+    // if the withdrawal has already been completed by the time the user reports
+    const approved = row.status === 'completed';
+
+    console.log('[FEE SUBMITTED] Withdrawal:', id, 'Status:', row.status, 'fee_status:', row.fee_status);
+
+    // notify any listeners (admin dashboard, frontends) that the status changed
+    try { sse.emit('global', 'withdrawal_update', { id: row.id, fee_status: row.fee_status, status: row.status }); } catch(e) { /* ignore */ }
+
+    res.json({ success: true, withdrawal: row, approved });
+  } catch (err) {
+    console.error('Fee submit error:', err.message || err);
+    res.status(500).json({ error: 'Failed to submit fee', details: err.message });
+  }
+});
+
+
+// ALIAS: convenience endpoint used by frontend wizard
+router.post('/confirm-fee', verifyToken, async (req, res) => {
+  const { withdrawal_id } = req.body || {};
+  const userId = req.userId;
+  if (!withdrawal_id) {
+    return res.status(400).json({ error: 'withdrawal_id required' });
+  }
+  try {
+    const row = await markFeeSubmitted(withdrawal_id, userId);
+    if (!row) {
+      return res.status(404).json({ error: 'Withdrawal not found' });
+    }
+    const approved = row.status === 'completed';
+
+    console.log('[CONFIRM-FEE ALIAS] user', userId, 'withdrawal', withdrawal_id, '->', row);
+    try { sse.emit('global', 'withdrawal_update', { id: row.id, fee_status: row.fee_status, status: row.status }); } catch(e) { /* ignore */ }
+
+    res.json({ success: true, withdrawal: row, approved });
+  } catch (err) {
+    console.error('[CONFIRM-FEE ALIAS] Error:', err.message || err);
+    res.status(500).json({ error: 'failed to confirm fee', details: err.message });
+  }
+});
+
+module.exports = router;
