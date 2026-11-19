@@ -90,7 +90,7 @@ export const HelpPage = () => {
 
       {/* ── QUICK ACTIONS ── */}
       <div className="help-quick-grid">
-        <a href="mailto:support@elon-u.com" className="help-quick-card">
+        <a href="mailto:cryptocurrencytradingtheelonu@gmail.com" className="help-quick-card">
           <div className="help-quick-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -98,7 +98,7 @@ export const HelpPage = () => {
             </svg>
           </div>
           <span className="help-quick-label">Email Support</span>
-          <span className="help-quick-sub">support@elon-u.com</span>
+          <span className="help-quick-sub">cryptocurrencytradingtheelonu@gmail.com</span>
         </a>
         <button type="button" className="help-quick-card" onClick={openLiveChat}>
           <div className="help-quick-icon ic-green">
@@ -190,7 +190,7 @@ export const HelpPage = () => {
             <div className="support-card-title">Email Support</div>
             <div className="support-card-desc">Get a detailed response from our team. Best for account issues and formal requests.</div>
             <div className="support-card-meta">Typically within 24 hours</div>
-            <a href="mailto:support@elon-u.com" className="support-card-btn">support@elon-u.com</a>
+            <a href="mailto:cryptocurrencytradingtheelonu@gmail.com" className="support-card-btn">cryptocurrencytradingtheelonu@gmail.com</a>
           </div>
           <div className="support-card">
             <div className="support-card-icon ic-green">
