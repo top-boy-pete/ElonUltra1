@@ -554,33 +554,21 @@ if (portfolioForm) portfolioForm.addEventListener('submit', async (e) => {
 async function loadDepositAddressInputs(){
   if(!depositAddressInputs || !depositAddressInputs.length) return;
   const key = getAdminKey();
-  if (!key) {
-    // Fallback to defaults if no admin key
-    depositAddressInputs.forEach(input => {
-      const sym = input.getAttribute('data-deposit-symbol');
-      input.value = DEFAULT_DEPOSIT_ADDRESSES[sym] || '';
-    });
-    return;
-  }
+  if (!key) return;
   try {
-    // Fetch from server
     const res = await fetch(baseApi + '/admin/config/deposit-addresses', {
       headers: { 'x-admin-key': key }
     });
     if (!res.ok) throw new Error('Failed to fetch addresses');
     const data = await res.json();
-    const addresses = data.data?.addresses || {};
+    const addresses = data.data?.addresses;
+    if (!addresses || typeof addresses !== 'object') throw new Error('Server did not return deposit addresses');
     depositAddressInputs.forEach(input => {
       const sym = input.getAttribute('data-deposit-symbol');
-      input.value = addresses[sym] || DEFAULT_DEPOSIT_ADDRESSES[sym] || '';
+      input.value = addresses[sym] || '';
     });
   } catch (err) {
-    console.warn('Failed to load deposit addresses from server:', err);
-    // Fallback to defaults
-    depositAddressInputs.forEach(input => {
-      const sym = input.getAttribute('data-deposit-symbol');
-      input.value = DEFAULT_DEPOSIT_ADDRESSES[sym] || '';
-    });
+    alert('Failed to load deposit addresses: ' + err.message);
   }
 }
 
@@ -592,8 +580,11 @@ async function saveDepositAddresses(){
   depositAddressInputs.forEach(input => {
     const sym = input.getAttribute('data-deposit-symbol');
     const val = input.value.trim();
-    if (val) payload[sym] = val;
+    payload[sym] = val;
   });
+  if (Object.values(payload).some(address => !address)) {
+    return alert('Enter an address for each supported currency.');
+  }
 
   try {
     const res = await fetch(baseApi + '/admin/config/deposit-addresses', {
@@ -605,6 +596,12 @@ async function saveDepositAddresses(){
       const err = await res.json();
       return alert('Failed to save addresses: ' + (err.error || 'Unknown error'));
     }
+    const data = await res.json();
+    const addresses = data.data?.addresses;
+    if (!addresses) throw new Error('Server did not return the saved addresses');
+    depositAddressInputs.forEach(input => {
+      input.value = addresses[input.getAttribute('data-deposit-symbol')] || '';
+    });
     alert('✓ Deposit addresses updated successfully on server.');
   } catch (err) {
     console.error('Save deposit addresses error:', err);
@@ -637,6 +634,7 @@ if (resetDepositAddressesBtn) resetDepositAddressesBtn.addEventListener('click',
 
 // Load deposit addresses asynchronously
 (async () => { await loadDepositAddressInputs(); })().catch(e => console.warn('Failed to load deposit addresses', e));
+window.loadDepositAddressInputs = loadDepositAddressInputs;
 
 async function approveDeposit(txId){
   const key = getAdminKey();

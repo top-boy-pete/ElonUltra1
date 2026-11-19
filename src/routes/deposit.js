@@ -1,14 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
-
-// In-memory cache for deposit addresses (loaded from DB on startup)
-let depositAddresses = {
-  BTC: process.env.DEPOSIT_ADDR_BTC || '1FfmbHfnpaZjKFvyi1okTjJJusN455paPH',
-  ETH: process.env.DEPOSIT_ADDR_ETH || '0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF',
-  USDT: process.env.DEPOSIT_ADDR_USDT || '0xd36e85873f91120785D3090Af4fE00d1050720c0',
-  USDC: process.env.DEPOSIT_ADDR_USDC || '0xUSDCADDRESSPLACEHOLDER0000000000000',
-};
+const adminConfigService = require('../services/adminConfig.service');
+const SUPPORTED_CURRENCIES = ['BTC', 'ETH', 'USDT', 'USDC'];
 
 // Helper to get current ADMIN_KEY dynamically
 function getAdminKey() {
@@ -16,18 +9,24 @@ function getAdminKey() {
 }
 
 // GET /api/deposit/address?currency=BTC - get a single deposit address (public)
-router.get('/address', (req, res) => {
+router.get('/address', async (req, res) => {
   const currency = (req.query.currency || 'BTC').toString().toUpperCase();
-
-  if (!depositAddresses[currency]) {
+  if (!SUPPORTED_CURRENCIES.includes(currency)) {
     return res.status(400).json({ success: false, error: 'Unsupported currency' });
   }
 
-  return res.json({ success: true, currency, address: depositAddresses[currency] });
+  try {
+    const address = await adminConfigService.getDepositAddress(currency);
+    if (!address) return res.status(404).json({ success: false, error: 'Deposit address is not configured' });
+    return res.json({ success: true, currency, address });
+  } catch (err) {
+    console.error('Deposit address lookup error:', err.message || err);
+    return res.status(500).json({ success: false, error: 'Failed to load deposit address' });
+  }
 });
 
 // GET /api/deposit/addresses - get all deposit addresses (admin only)
-router.get('/addresses', (req, res) => {
+router.get('/addresses', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   const ADMIN_KEY = getAdminKey();
 
@@ -35,11 +34,17 @@ router.get('/addresses', (req, res) => {
     return res.status(403).json({ error: 'Unauthorized' });
   }
 
-  return res.json({ success: true, addresses: depositAddresses });
+  try {
+    const addresses = await adminConfigService.getDepositAddresses();
+    return res.json({ success: true, addresses });
+  } catch (err) {
+    console.error('Deposit addresses lookup error:', err.message || err);
+    return res.status(500).json({ error: 'Failed to load deposit addresses' });
+  }
 });
 
 // POST /api/deposit/addresses - set deposit addresses (admin only)
-router.post('/addresses', (req, res) => {
+router.post('/addresses', async (req, res) => {
   const adminKey = req.headers['x-admin-key'];
   const ADMIN_KEY = getAdminKey();
 
@@ -48,19 +53,29 @@ router.post('/addresses', (req, res) => {
   }
 
   const { addresses } = req.body;
-  if (!addresses || typeof addresses !== 'object') {
+  if (!addresses || typeof addresses !== 'object' || Array.isArray(addresses)) {
     return res.status(400).json({ error: 'addresses object required' });
   }
 
-  // Update addresses in memory
-  const validSymbols = ['BTC', 'ETH', 'USDT', 'USDC'];
-  for (const symbol of validSymbols) {
-    if (addresses[symbol]) {
-      depositAddresses[symbol] = String(addresses[symbol]).trim();
+  const updates = {};
+  for (const symbol of SUPPORTED_CURRENCIES) {
+    if (addresses[symbol] !== undefined) {
+      if (typeof addresses[symbol] !== 'string' || !addresses[symbol].trim()) {
+        return res.status(400).json({ error: `Invalid address for ${symbol}` });
+      }
+      updates[symbol] = addresses[symbol].trim();
     }
   }
+  if (!Object.keys(updates).length) return res.status(400).json({ error: 'No supported addresses provided' });
 
-  return res.json({ success: true, addresses: depositAddresses });
+  try {
+    await adminConfigService.setDepositAddresses(updates);
+    const savedAddresses = await adminConfigService.getDepositAddresses();
+    return res.json({ success: true, addresses: savedAddresses });
+  } catch (err) {
+    console.error('Deposit addresses update error:', err.message || err);
+    return res.status(500).json({ error: 'Failed to save deposit addresses' });
+  }
 });
 
 module.exports = router;

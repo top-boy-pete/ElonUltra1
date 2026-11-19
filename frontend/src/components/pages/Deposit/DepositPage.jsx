@@ -3,13 +3,6 @@ import './DepositPage.css';
 import API from '../../../services/api';
 import Icon from '../../icons/Icon';
 
-const MOCK_ADDRESSES = {
-  BTC: 'bc1qmockaddressforbtc00000000000000',
-  ETH: '0xMockEthereumAddressForDeposit0000000000000000',
-  USDT: 'TMockTetherAddressUSDT000000000000000',
-  USDC: '0xMockUSDCCryptoAddress0000000000000000'
-};
-
 export const DepositPage = () => {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('bank');
@@ -31,27 +24,16 @@ export const DepositPage = () => {
   const fetchAndShowAddress = async (sym) => {
     try {
       const symbol = sym.toUpperCase();
-      
-      // Try API first
-      try {
-        const res = await API.get(`/deposit/address?currency=${symbol}`);
-        if (res.data?.address) {
-          setDepositAddress(res.data.address);
-          setQrCode(`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(res.data.address)}`);
-          return;
-        }
-      } catch (apiErr) {
-        console.warn('Could not fetch from API, using mock address', apiErr.message);
-      }
-
-      // Fallback to mock
-      const mockAddr = MOCK_ADDRESSES[symbol] || '0xMOCKADDRESS0000000000000000000000000000';
-      setDepositAddress(mockAddr);
-      setQrCode(`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(mockAddr)}`);
+      setError('');
+      const res = await API.get(`/deposit/address?currency=${symbol}`);
+      if (!res.data?.address) throw new Error('Deposit address is not configured.');
+      setDepositAddress(res.data.address);
+      setQrCode(`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(res.data.address)}`);
     } catch (err) {
       console.error('Address fetch error:', err);
       setDepositAddress('');
       setQrCode('');
+      setError(err.response?.data?.error || err.message || 'Unable to load deposit address.');
     }
   };
 

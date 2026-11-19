@@ -63,6 +63,7 @@
         console.warn('fetchTransactions: unexpected response format', data);
         transactions = [];
       }
+      transactions = transactions.map(transaction => ({ ...transaction, source: 'transaction' }));
       
       // Also fetch withdrawals
       let withdrawals = [];
@@ -85,7 +86,8 @@
             txn_hash: w.txn_hash,
             crypto_address: w.crypto_address,
             fee_amount: w.fee_amount,
-            fee_status: w.fee_status
+            fee_status: w.fee_status,
+            source: 'withdrawal'
           }));
         }
       } catch (err) {
@@ -126,7 +128,7 @@
         <td>${t.date ? new Date(t.date).toLocaleDateString() : '—'}</td>
         <td><span style="padding:3px 8px;border-radius:4px;font-size:11px;background:${t.status==='completed'?'#10b981':'#fbbf24'};color:white">${t.status || 'pending'}</span></td>
         <td>
-          <button onclick="editTransaction('${t.id || idx}')" style="padding:4px 8px;font-size:12px;margin-right:4px">Edit</button>
+          ${t.source !== 'withdrawal' ? `<button onclick="editTransaction('${t.id}', 'transaction')" style="padding:4px 8px;font-size:12px;margin-right:4px">Edit</button>` : ''}
           <button onclick="deleteTransaction('${t.id}', '${t.type}')" style="padding:4px 8px;font-size:12px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
         </td>
       `;
@@ -156,7 +158,7 @@
         <td><span style="padding:3px 8px;border-radius:4px;font-size:11px;background:${t.status==='completed'?'#10b981':'#fbbf24'};color:white">${t.status || 'pending'}</span></td>
         <td style="font-size:11px;font-family:monospace">${(t.txid || t.reference || '—').substring(0,12)}${t.txid && t.txid.length > 12 ? '...' : ''}</td>
         <td>
-          <button onclick="editTransaction('${t.id || idx}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          <button onclick="editTransaction('${t.id}', 'transaction')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
           ${t.status !== 'completed' ? `<button onclick="approveTransaction('${t.id || idx}', '${t.type}')" style="padding:2px 4px;font-size:11px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Approve</button>` : ''}
           <button onclick="deleteTransaction('${t.id}')" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
         </td>
@@ -185,16 +187,19 @@
           : 'status-required';
 
       let actionBtns = '';
+      const editButton = t.source === 'withdrawal'
+        ? ''
+        : `<button onclick="editTransaction('${t.id}', 'transaction')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>`;
       if (t.status === 'pending' || t.status === 'processing') {
         actionBtns = `
-          <button onclick="editTransaction('${t.id}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          ${editButton}
           <button onclick="approveTransaction('${t.id}', 'withdrawal')" style="padding:2px 4px;font-size:11px;background:#10b981;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Approve</button>
           <button onclick="failWithdrawal(${t.id})" style="padding:2px 4px;font-size:11px;background:#ff9800;color:white;border:none;border-radius:4px;cursor:pointer;margin-right:2px">Failed</button>
           <button onclick="deleteWithdrawal(${t.id})" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
         `;
       } else {
         actionBtns = `
-          <button onclick="editTransaction('${t.id}')" style="padding:2px 4px;font-size:11px;margin-right:2px">Edit</button>
+          ${editButton}
           <button onclick="deleteWithdrawal(${t.id})" style="padding:2px 4px;font-size:11px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
         `;
       }
@@ -237,7 +242,7 @@
         <td>${fmtMoney(t.price || 0)}</td>
         <td>${fmtMoney((t.amount || 0) * (t.price || 0))}</td>
         <td>
-          <button onclick="editTransaction('${t.id || idx}')" style="padding:4px 8px;font-size:12px;margin-right:4px">Edit</button>
+          <button onclick="editTransaction('${t.id}', 'transaction')" style="padding:4px 8px;font-size:12px;margin-right:4px">Edit</button>
           <button onclick="deleteTransaction('${t.id}', '${t.type}')" style="padding:4px 8px;font-size:12px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer">Delete</button>
         </td>
       `;
@@ -280,9 +285,77 @@
     }
   }
   
-  async function editTransaction(id) {
-    alert('Edit functionality not implemented yet');
+  function toDateTimeLocal(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   }
+
+  function editTransaction(id, source = 'transaction') {
+    if (source !== 'transaction') {
+      return alert('Withdrawal records must be changed through the withdrawal actions.');
+    }
+
+    const transaction = allTransactions.find(item =>
+      item.source !== 'withdrawal' && String(item.id) === String(id)
+    );
+    if (!transaction) return alert('Transaction not found. Refresh the table and try again.');
+
+    document.getElementById('transaction-edit-title').textContent = `Edit Transaction #${transaction.id}`;
+    document.getElementById('edit-transaction-id').value = transaction.id;
+    document.getElementById('edit-transaction-type').value = transaction.type || '';
+    document.getElementById('edit-transaction-status').value = transaction.status || 'pending';
+    document.getElementById('edit-transaction-amount').value = transaction.amount ?? '';
+    document.getElementById('edit-transaction-method').value = transaction.method || transaction.currency || '';
+    document.getElementById('edit-transaction-date').value = toDateTimeLocal(transaction.date || transaction.created_at);
+    document.getElementById('edit-transaction-txid').value = transaction.txid || transaction.reference || '';
+    document.getElementById('modal-edit-transaction').classList.add('open');
+  }
+
+  document.getElementById('transaction-edit-form')?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submitButton = form.querySelector('button[type="submit"]');
+    const amount = Number(document.getElementById('edit-transaction-amount').value);
+    const dateValue = document.getElementById('edit-transaction-date').value;
+    const date = new Date(dateValue);
+    if (!Number.isFinite(amount) || amount <= 0) return alert('Enter a valid amount greater than zero.');
+    if (!dateValue || Number.isNaN(date.getTime())) return alert('Enter a valid transaction date.');
+
+    const id = document.getElementById('edit-transaction-id').value;
+    const payload = {
+      type: document.getElementById('edit-transaction-type').value.trim(),
+      status: document.getElementById('edit-transaction-status').value.trim(),
+      amount,
+      method: document.getElementById('edit-transaction-method').value.trim(),
+      date: date.toISOString(),
+      txid: document.getElementById('edit-transaction-txid').value,
+    };
+    const key = getAdminKey();
+    if (!key) return alert('Admin key required');
+
+    submitButton.disabled = true;
+    try {
+      const res = await fetch(`${apiBase}/admin/transactions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-admin-key': key },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.error || `Update failed (${res.status})`);
+      }
+      document.getElementById('modal-edit-transaction').classList.remove('open');
+      alert('Transaction updated.');
+      await fetchTransactions();
+      if (typeof loadAdminDeposits === 'function') loadAdminDeposits();
+    } catch (err) {
+      console.error('Transaction update error:', err);
+      alert('Failed to update transaction: ' + err.message);
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
   
   async function approveTransaction(id, type) {
     const key = getAdminKey();

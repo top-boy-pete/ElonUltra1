@@ -27,8 +27,14 @@ const adminConfigController = {
   async setDepositAddresses(req, res, next) {
     try {
       const { addresses } = req.body;
-      if (!addresses || typeof addresses !== 'object') {
+      if (!addresses || typeof addresses !== 'object' || Array.isArray(addresses)) {
         return response.badRequest(res, 'Invalid addresses object');
+      }
+      const entries = Object.entries(addresses);
+      if (!entries.length || entries.some(([symbol, address]) =>
+        !symbol.trim() || typeof address !== 'string' || !address.trim()
+      )) {
+        return response.badRequest(res, 'Each deposit address must be a non-empty string');
       }
 
       const updated = await adminConfigService.setDepositAddresses(addresses);

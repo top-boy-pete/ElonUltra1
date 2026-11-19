@@ -1258,27 +1258,42 @@ router.delete('/withdrawals/:id', async (req, res) => {
 // PUT /api/admin/transactions/:id - update transaction fields
 router.put('/transactions/:id', async (req, res) => {
   try {
-    const provided = req.headers['x-admin-key'];
     const guard = requireAdminKey(req, res);
     if (!guard.ok) return res.status(guard.code).json({ error: guard.msg });
 
     const txId = parseInt(req.params.id, 10);
     if (isNaN(txId)) return res.status(400).json({ error: 'invalid transaction id' });
 
-    const { type, amount, status, method, date } = req.body;
-    const amt = amount != null ? parseFloat(amount) : null;
-
-    let createdAt = null;
-    if (date) {
-      const d = new Date(date);
-      if (!isNaN(d.getTime())) createdAt = d;
+    const { type, amount, status, method, date, txid } = req.body || {};
+    const amt = amount != null ? Number(amount) : null;
+    if (amt != null && (!Number.isFinite(amt) || amt <= 0)) {
+      return res.status(400).json({ error: 'invalid transaction amount' });
     }
 
-    await db.query(
-      'UPDATE transactions SET type = COALESCE($2,type), amount = COALESCE($3,amount), currency = COALESCE($4,currency), status = COALESCE($5,status), created_at = COALESCE($6, created_at), updated_at = NOW() WHERE id=$1',
-      [txId, type || null, amt, method || null, status || null, createdAt]
+    for (const [field, value] of Object.entries({ type, status, method })) {
+      if (value != null && (typeof value !== 'string' || !value.trim())) {
+        return res.status(400).json({ error: `invalid transaction ${field}` });
+      }
+    }
+    if (txid != null && typeof txid !== 'string') {
+      return res.status(400).json({ error: 'invalid transaction reference' });
+    }
+
+    let createdAt = null;
+    if (date != null) {
+      const d = new Date(date);
+      if (typeof date !== 'string' || !date.trim() || Number.isNaN(d.getTime())) {
+        return res.status(400).json({ error: 'invalid transaction date' });
+      }
+      createdAt = d;
+    }
+
+    const result = await db.query(
+      'UPDATE transactions SET type = COALESCE($2,type), amount = COALESCE($3,amount), currency = COALESCE($4,currency), status = COALESCE($5,status), created_at = COALESCE($6, created_at), reference = COALESCE($7, reference), updated_at = NOW() WHERE id=$1 RETURNING id',
+      [txId, type?.trim() || null, amt, method?.trim() || null, status?.trim() || null, createdAt, txid]
     );
 
+    if (!result.rows.length) return res.status(404).json({ error: 'transaction not found' });
     return res.json({ success: true, id: txId });
   } catch (err) {
     console.error('Update transaction error:', err.message || err);

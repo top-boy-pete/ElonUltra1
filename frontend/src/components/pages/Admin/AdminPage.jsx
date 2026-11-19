@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Wallet, Receipt, TrendingUp,
   Megaphone, MessageSquare, Settings as SettingsIcon, Shield,
   Lock, Sun, Moon, Cpu, Play, Pause, DollarSign, Briefcase,
-  Save, AlertTriangle, Bell, RefreshCw, Trash2, MessageCircle,
+  Save, AlertTriangle, Bell, RefreshCw, Trash2, MessageCircle, Pencil,
   Plus, ArrowUpRight, Check, X
 } from 'lucide-react';
 import './AdminPage.css';
@@ -34,6 +34,12 @@ const PAGE_TITLES = {
   settings:     'Settings',
   security:     'Security',
 };
+
+function toDateTimeLocal(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
 
 export const AdminPage = () => {
   /* ── Standalone auth gate ──────────────────────────────────── */
@@ -71,73 +77,6 @@ export const AdminPage = () => {
     setKeyInput('');
   };
 
-  /* ── Key-auth login screen ─────────────────────────────────── */
-  if (!keyVerified) {
-    return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#0d0f14', fontFamily: 'system-ui, sans-serif',
-      }}>
-        <div style={{
-          background: '#161920', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px',
-          padding: '48px 40px', width: '100%', maxWidth: '400px', boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: '14px', background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
-              fontSize: '22px', fontWeight: 800, color: '#fff',
-            }}>E</div>
-            <div style={{ fontSize: '20px', fontWeight: 700, color: '#f1f5f9' }}>Admin Console</div>
-            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Enter your admin key to continue</div>
-          </div>
-          <form onSubmit={verifyKey}>
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type={showKey ? 'text' : 'password'}
-                  autoFocus
-                  placeholder="Admin key…"
-                  value={keyInput}
-                  onChange={e => { setKeyInput(e.target.value); setKeyError(''); }}
-                  style={{
-                    width: '100%', padding: '12px 44px 12px 14px', borderRadius: '10px', fontSize: '15px',
-                    background: '#0d0f14', border: `1px solid ${keyError ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
-                    color: '#f1f5f9', outline: 'none', boxSizing: 'border-box',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowKey(s => !s)}
-                  style={{
-                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
-                    color: '#64748b', fontSize: '13px', lineHeight: 1,
-                  }}
-                  title={showKey ? 'Hide' : 'Show'}
-                >
-                  {showKey ? '🙈' : '👁️'}
-                </button>
-              </div>
-              {keyError && <div style={{ color: '#ef4444', fontSize: '13px', marginTop: '8px' }}>{keyError}</div>}
-            </div>
-            <button
-              type="submit"
-              disabled={keyLoading || !keyInput.trim()}
-              style={{
-                width: '100%', padding: '12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
-                background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: '#fff',
-                fontSize: '15px', fontWeight: 600, opacity: keyLoading || !keyInput.trim() ? 0.6 : 1,
-              }}
-            >
-              {keyLoading ? 'Verifying…' : 'Access Admin'}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
   /* ── UI state ──────────────────────────────────────────────── */
   const [activePage, setActivePage] = useState(() => localStorage.getItem('admin_last_page') || 'dashboard');
   const [theme, setTheme] = useState('dark');
@@ -145,6 +84,7 @@ export const AdminPage = () => {
   const [keyPopupOpen, setKeyPopupOpen] = useState(false);
   const [activeModal, setActiveModal] = useState(null);
   const [txTab, setTxTab] = useState('deposits');
+  const [transactionForm, setTransactionForm] = useState(null);
 
   /* ── Data state ────────────────────────────────────────────── */
   const [users, setUsers] = useState([]);
@@ -159,6 +99,7 @@ export const AdminPage = () => {
 
   /* ── Address form ──────────────────────────────────────────── */
   const [depAddr, setDepAddr] = useState({ BTC: '', ETH: '', USDT: '', USDC: '' });
+  const [savedDepAddr, setSavedDepAddr] = useState({ BTC: '', ETH: '', USDT: '', USDC: '' });
 
   /* ── Prompts ───────────────────────────────────────────────── */
   const [promptMsg, setPromptMsg] = useState('');
@@ -268,14 +209,34 @@ export const AdminPage = () => {
 
   const handleSaveAddresses = async () => {
     if (!adminKey) { flash('error', 'Enter admin key.'); return; }
+    if (Object.values(depAddr).some(address => !address.trim())) {
+      flash('error', 'Enter an address for each supported currency.');
+      return;
+    }
     try {
-      await adminFetch('/admin/config/deposit-addresses', adminKey, {
+      const result = await adminFetch('/admin/config/deposit-addresses', adminKey, {
         method: 'POST',
-        body: JSON.stringify(depAddr),
+        body: JSON.stringify({ addresses: depAddr }),
       });
+      const addresses = result.data?.addresses;
+      if (!addresses) throw new Error('Server did not return the saved addresses.');
+      setDepAddr(current => ({ ...current, ...addresses }));
+      setSavedDepAddr(current => ({ ...current, ...addresses }));
       flash('success', 'Addresses saved!');
     } catch (err) {
       flash('error', 'Failed: ' + err.message);
+    }
+  };
+
+  const loadDepositAddresses = async () => {
+    if (!adminKey) return;
+    try {
+      const result = await adminFetch('/admin/config/deposit-addresses', adminKey);
+      if (!result.data?.addresses) throw new Error('Server did not return deposit addresses.');
+      setDepAddr(current => ({ ...current, ...result.data.addresses }));
+      setSavedDepAddr(current => ({ ...current, ...result.data.addresses }));
+    } catch (err) {
+      flash('error', 'Failed to load deposit addresses: ' + err.message);
     }
   };
 
@@ -333,6 +294,49 @@ export const AdminPage = () => {
       const data = await adminFetch('/admin/transactions', adminKey);
       setAllTx(Array.isArray(data) ? data : (data.transactions || []));
     } catch (err) { flash('error', 'Failed to load transactions: ' + err.message); }
+  };
+
+  const openTransactionEditor = (transaction) => {
+    setTransactionForm({
+      id: transaction.id,
+      type: transaction.type || '',
+      amount: String(transaction.amount ?? ''),
+      method: transaction.method || transaction.currency || '',
+      status: transaction.status || 'pending',
+      date: toDateTimeLocal(transaction.date || transaction.created_at),
+      txid: transaction.txid || transaction.reference || '',
+    });
+    setActiveModal('edit-transaction');
+  };
+
+  const handleUpdateTransaction = async (e) => {
+    e.preventDefault();
+    if (!transactionForm || !adminKey) return;
+    const amount = Number(transactionForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      flash('error', 'Enter a valid transaction amount greater than zero.');
+      return;
+    }
+
+    try {
+      await adminFetch(`/admin/transactions/${transactionForm.id}`, adminKey, {
+        method: 'PUT',
+        body: JSON.stringify({
+          type: transactionForm.type,
+          amount,
+          status: transactionForm.status,
+          method: transactionForm.method,
+          date: new Date(transactionForm.date).toISOString(),
+          txid: transactionForm.txid,
+        }),
+      });
+      setActiveModal(null);
+      setTransactionForm(null);
+      flash('success', 'Transaction updated.');
+      await loadAllTx();
+    } catch (err) {
+      flash('error', 'Failed to update transaction: ' + err.message);
+    }
   };
 
   const loadGrowthData = async (userId) => {
@@ -506,11 +510,7 @@ export const AdminPage = () => {
     if (activePage === 'prompts')      loadPrompts();
     if (activePage === 'security')     loadOtp();
     if (activePage === 'transactions') loadDeposits();
-    if (activePage === 'settings') {
-      adminFetch('/admin/config/deposit-addresses', adminKey)
-        .then(d => { if (d) setDepAddr(a => ({ ...a, ...d })); })
-        .catch(() => {});
-    }
+    if (activePage === 'settings') loadDepositAddresses();
   }, [activePage, adminKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -533,11 +533,133 @@ export const AdminPage = () => {
   /* ── Render helpers ────────────────────────────────────────── */
   const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 
+  /* ── Key-auth login screen ─────────────────────────────────── */
+  if (!keyVerified) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#0d0f14', fontFamily: 'system-ui, sans-serif',
+      }}>
+        <div style={{
+          background: '#161920', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '16px',
+          padding: '48px 40px', width: '100%', maxWidth: '400px', boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '14px', background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+              fontSize: '22px', fontWeight: 800, color: '#fff',
+            }}>E</div>
+            <div style={{ fontSize: '20px', fontWeight: 700, color: '#f1f5f9' }}>Admin Console</div>
+            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Enter your admin key to continue</div>
+          </div>
+          <form onSubmit={verifyKey}>
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  autoFocus
+                  placeholder="Admin key…"
+                  value={keyInput}
+                  onChange={e => { setKeyInput(e.target.value); setKeyError(''); }}
+                  style={{
+                    width: '100%', padding: '12px 44px 12px 14px', borderRadius: '10px', fontSize: '15px',
+                    background: '#0d0f14', border: `1px solid ${keyError ? '#ef4444' : 'rgba(255,255,255,0.1)'}`,
+                    color: '#f1f5f9', outline: 'none', boxSizing: 'border-box',
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey(s => !s)}
+                  style={{
+                    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '4px',
+                    color: '#64748b', fontSize: '13px', lineHeight: 1,
+                  }}
+                  title={showKey ? 'Hide' : 'Show'}
+                >
+                  {showKey ? '🙈' : '👁️'}
+                </button>
+              </div>
+              {keyError && <div style={{ color: '#ef4444', fontSize: '13px', marginTop: '8px' }}>{keyError}</div>}
+            </div>
+            <button
+              type="submit"
+              disabled={keyLoading || !keyInput.trim()}
+              style={{
+                width: '100%', padding: '12px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', color: '#fff',
+                fontSize: '15px', fontWeight: 600, opacity: keyLoading || !keyInput.trim() ? 0.6 : 1,
+              }}
+            >
+              {keyLoading ? 'Verifying…' : 'Access Admin'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   /* ════════════════════════════════════════════════════════════ */
   return (
     <div className="admin-redesign" data-theme={theme}>
 
       {/* ═══ MODALS ═════════════════════════════════════════════ */}
+
+      {/* Edit Transaction Modal */}
+      {transactionForm && (
+        <div className={`modal-overlay${activeModal === 'edit-transaction' ? ' open' : ''}`}
+             onClick={(e) => e.target === e.currentTarget && setActiveModal(null)}>
+          <form className="modal" style={{ maxWidth: '480px' }} onSubmit={handleUpdateTransaction}>
+            <div className="modal-header">
+              <h3>Edit Transaction #{transactionForm.id}</h3>
+              <button type="button" className="modal-close" onClick={() => setActiveModal(null)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div className="stack">
+                <div className="form-grid form-2">
+                  <label><span>Type</span>
+                    <select required value={transactionForm.type} onChange={e => setTransactionForm(f => ({ ...f, type: e.target.value }))}>
+                      {!['deposit', 'withdrawal', 'trade'].includes(transactionForm.type) && <option value={transactionForm.type}>{transactionForm.type}</option>}
+                      <option value="deposit">Deposit</option>
+                      <option value="withdrawal">Withdrawal</option>
+                      <option value="trade">Trade</option>
+                    </select>
+                  </label>
+                  <label><span>Status</span>
+                    <select required value={transactionForm.status} onChange={e => setTransactionForm(f => ({ ...f, status: e.target.value }))}>
+                      {!['pending', 'completed', 'failed', 'cancelled', 'approved'].includes(transactionForm.status) && <option value={transactionForm.status}>{transactionForm.status}</option>}
+                      <option value="pending">Pending</option>
+                      <option value="completed">Completed</option>
+                      <option value="failed">Failed</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="approved">Approved</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="form-grid form-2">
+                  <label><span>Amount</span>
+                    <input type="number" min="0.00000001" step="any" required value={transactionForm.amount} onChange={e => setTransactionForm(f => ({ ...f, amount: e.target.value }))} />
+                  </label>
+                  <label><span>Currency / Method</span>
+                    <input required value={transactionForm.method} onChange={e => setTransactionForm(f => ({ ...f, method: e.target.value }))} />
+                  </label>
+                </div>
+                <label><span>Date</span>
+                  <input type="datetime-local" required value={transactionForm.date} onChange={e => setTransactionForm(f => ({ ...f, date: e.target.value }))} />
+                </label>
+                <label><span>Transaction ID / Reference</span>
+                  <input value={transactionForm.txid} onChange={e => setTransactionForm(f => ({ ...f, txid: e.target.value }))} />
+                </label>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-ghost" onClick={() => setActiveModal(null)}>Cancel</button>
+              <button type="submit" className="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Users Modal */}
       <div className={`modal-overlay${activeModal === 'users' ? ' open' : ''}`}
@@ -1251,12 +1373,17 @@ export const AdminPage = () => {
                         ) : allTx.map(t => (
                           <tr key={t.id}>
                             <td>#{t.id}</td>
-                            <td>#{t.user_id || t.user}</td>
+                            <td>#{t.user_id || t.user || '—'}</td>
                             <td>{t.type}</td>
-                            <td>${parseFloat(t.amount || 0).toFixed(2)} {t.currency || ''}</td>
+                            <td>${parseFloat(t.amount || 0).toFixed(2)} {t.method || t.currency || ''}</td>
                             <td>{t.created_at ? new Date(t.created_at).toLocaleDateString() : (t.date || '—')}</td>
                             <td><span className={`badge ${t.status === 'completed' ? 'badge-green' : t.status === 'pending' ? 'badge-blue' : 'badge-red'}`}>{t.status || '—'}</span></td>
-                            <td><button className="btn btn-danger btn-xs" onClick={() => { if (window.confirm('Delete this transaction?')) adminFetch(`/admin/transactions/${t.id}`, adminKey, { method: 'DELETE' }).then(() => loadAllTx()).catch(err => flash('error', err.message)); }}>Delete</button></td>
+                            <td>
+                              <div className="btn-group">
+                                <button className="btn btn-ghost btn-xs" onClick={() => openTransactionEditor(t)}><Pencil size={11}/> Edit</button>
+                                <button className="btn btn-danger btn-xs" onClick={() => { if (window.confirm('Delete this transaction?')) adminFetch(`/admin/transactions/${t.id}`, adminKey, { method: 'DELETE' }).then(() => loadAllTx()).catch(err => flash('error', err.message)); }}>Delete</button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1395,7 +1522,7 @@ export const AdminPage = () => {
                   </div>
                   <div className="btn-group">
                     <button className="btn btn-primary" onClick={handleSaveAddresses}>Save Addresses</button>
-                    <button className="btn btn-ghost" onClick={() => setDepAddr({ BTC:'', ETH:'', USDT:'', USDC:'' })}>Reset</button>
+                    <button className="btn btn-ghost" onClick={() => setDepAddr({ ...savedDepAddr })}>Reset</button>
                   </div>
                 </div>
 
@@ -1499,4 +1626,3 @@ export const AdminPage = () => {
     </div>
   );
 };
-

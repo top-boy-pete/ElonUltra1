@@ -652,6 +652,35 @@
   </div>
 </div>
 
+<!-- Edit Transaction Modal -->
+<div class="modal-overlay" id="modal-edit-transaction">
+  <form class="modal" id="transaction-edit-form" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="transaction-edit-title">Edit Transaction</h3>
+      <button type="button" class="modal-close" onclick="closeModal('modal-edit-transaction')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="stack">
+        <input type="hidden" id="edit-transaction-id" />
+        <div class="form-grid form-2">
+          <label><span>Type</span><input id="edit-transaction-type" required /></label>
+          <label><span>Status</span><input id="edit-transaction-status" required /></label>
+        </div>
+        <div class="form-grid form-2">
+          <label><span>Amount</span><input id="edit-transaction-amount" type="number" min="0.00000001" step="any" required /></label>
+          <label><span>Currency / Method</span><input id="edit-transaction-method" required /></label>
+        </div>
+        <label><span>Date</span><input id="edit-transaction-date" type="datetime-local" required /></label>
+        <label><span>Transaction ID / Reference</span><input id="edit-transaction-txid" /></label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeModal('modal-edit-transaction')">Cancel</button>
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</div>
+
 <!-- Add Testimony Modal -->
 <div class="modal-overlay" id="modal-testimony">
   <div class="modal" style="max-width:540px">
@@ -1516,6 +1545,7 @@
       if (badge24) { badge24.textContent = '24H'; badge24.className = 'stat-badge badge-neu'; }
       var sub24 = document.getElementById('stat-24h-pct');
       if (sub24) sub24.textContent = '\u2014';
+      if (typeof window.loadDepositAddressInputs === 'function') window.loadDepositAddressInputs();
     }
 
     function setLoading(on) {

@@ -52,8 +52,9 @@ const adminConfigService = {
   async setDepositAddresses(addressMap) {
     const results = {};
     for (const [symbol, address] of Object.entries(addressMap)) {
-      const result = await this.setDepositAddress(symbol, address);
-      results[symbol] = result.address;
+      const normalizedSymbol = symbol.trim().toUpperCase();
+      const result = await this.setDepositAddress(normalizedSymbol, address.trim());
+      results[normalizedSymbol] = result.address;
     }
     return results;
   },

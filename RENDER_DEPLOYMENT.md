@@ -40,8 +40,12 @@ git push -u origin main
    - **Environment**: Node
    - **Region**: Same as database
    - **Branch**: `main`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm run server`
+   - **Build Command**: `npm install && cd frontend && npm install --include=dev && npm run build`
+   - **Start Command**: `node src/server.js`
+
+   The frontend build is required: the server serves the React app from
+   `frontend/dist`. If the build is skipped, the API can respond while the
+   website root returns `404 Not Found`.
    - **Plan**: Free tier
 
 4. Click **Advanced** and add environment variables:
@@ -77,6 +81,15 @@ To use a custom domain:
 - Check **Logs** tab for errors
 - Verify DATABASE_URL is correct
 - Ensure all environment variables are set
+
+### API health check works, but the website root returns 404?
+- Confirm the build command includes `cd frontend && npm install --include=dev && npm run build`.
+- In the deploy logs, confirm the frontend build succeeds and creates `frontend/dist/index.html`.
+- Trigger a new deploy after correcting the build command.
+
+### Frontend build fails with `vite: not found`?
+- Vite is a frontend development dependency, so production npm settings may omit it.
+- Include `npm install --include=dev` in the frontend build step as shown above, then redeploy.
 
 ### Database connection failed?
 - Copy the **Internal Database URL** from the Postgres service
